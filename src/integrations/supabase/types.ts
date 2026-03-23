@@ -14,16 +14,353 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          cpf: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          profession: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          cpf: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          profession?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          cpf?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          profession?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      declarations: {
+        Row: {
+          client_id: string
+          created_at: string
+          exercise_year: number
+          fiscal_risk: Database["public"]["Enums"]["fiscal_risk"]
+          id: string
+          installments: number | null
+          malha_fina: boolean
+          processed_date: string | null
+          refund_batch: string | null
+          result: Database["public"]["Enums"]["declaration_result"] | null
+          result_value: number | null
+          sent_date: string | null
+          status: Database["public"]["Enums"]["declaration_status"]
+          type: Database["public"]["Enums"]["declaration_type"]
+          updated_at: string
+          user_id: string
+          year_base: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          exercise_year: number
+          fiscal_risk?: Database["public"]["Enums"]["fiscal_risk"]
+          id?: string
+          installments?: number | null
+          malha_fina?: boolean
+          processed_date?: string | null
+          refund_batch?: string | null
+          result?: Database["public"]["Enums"]["declaration_result"] | null
+          result_value?: number | null
+          sent_date?: string | null
+          status?: Database["public"]["Enums"]["declaration_status"]
+          type?: Database["public"]["Enums"]["declaration_type"]
+          updated_at?: string
+          user_id: string
+          year_base: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          exercise_year?: number
+          fiscal_risk?: Database["public"]["Enums"]["fiscal_risk"]
+          id?: string
+          installments?: number | null
+          malha_fina?: boolean
+          processed_date?: string | null
+          refund_batch?: string | null
+          result?: Database["public"]["Enums"]["declaration_result"] | null
+          result_value?: number | null
+          sent_date?: string | null
+          status?: Database["public"]["Enums"]["declaration_status"]
+          type?: Database["public"]["Enums"]["declaration_type"]
+          updated_at?: string
+          user_id?: string
+          year_base?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "declarations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          category: Database["public"]["Enums"]["document_category"]
+          client_id: string
+          created_at: string
+          declaration_id: string
+          file_name: string
+          file_path: string
+          file_type: string | null
+          id: string
+          reviewed: boolean
+          user_id: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["document_category"]
+          client_id: string
+          created_at?: string
+          declaration_id: string
+          file_name: string
+          file_path: string
+          file_type?: string | null
+          id?: string
+          reviewed?: boolean
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_category"]
+          client_id?: string
+          created_at?: string
+          declaration_id?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string | null
+          id?: string
+          reviewed?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          declaration_id: string
+          due_date: string | null
+          id: string
+          installments: number | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          declaration_id: string
+          due_date?: string | null
+          id?: string
+          installments?: number | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          declaration_id?: string
+          due_date?: string | null
+          id?: string
+          installments?: number | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed: boolean
+          created_at: string
+          declaration_id: string
+          due_date: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed?: boolean
+          created_at?: string
+          declaration_id: string
+          due_date?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed?: boolean
+          created_at?: string
+          declaration_id?: string
+          due_date?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_declaration_id_fkey"
+            columns: ["declaration_id"]
+            isOneToOne: false
+            referencedRelation: "declarations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "funcionario"
+      declaration_result: "a_restituir" | "a_pagar" | "sem_imposto"
+      declaration_status:
+        | "aguardando_documentos"
+        | "em_andamento"
+        | "em_revisao"
+        | "finalizada"
+        | "enviada"
+        | "em_processamento"
+        | "processada"
+      declaration_type: "completa" | "simplificada"
+      document_category:
+        | "comprovantes_rendimentos"
+        | "despesas_medicas"
+        | "educacao"
+        | "informes_bancarios"
+        | "notas_fiscais"
+        | "outros"
+      fiscal_risk: "baixo" | "medio" | "alto"
+      payment_method: "pix" | "cartao" | "dinheiro" | "transferencia"
+      payment_status: "pendente" | "pago" | "parcial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +487,30 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "funcionario"],
+      declaration_result: ["a_restituir", "a_pagar", "sem_imposto"],
+      declaration_status: [
+        "aguardando_documentos",
+        "em_andamento",
+        "em_revisao",
+        "finalizada",
+        "enviada",
+        "em_processamento",
+        "processada",
+      ],
+      declaration_type: ["completa", "simplificada"],
+      document_category: [
+        "comprovantes_rendimentos",
+        "despesas_medicas",
+        "educacao",
+        "informes_bancarios",
+        "notas_fiscais",
+        "outros",
+      ],
+      fiscal_risk: ["baixo", "medio", "alto"],
+      payment_method: ["pix", "cartao", "dinheiro", "transferencia"],
+      payment_status: ["pendente", "pago", "parcial"],
+    },
   },
 } as const
