@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDeclarations, useClients } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { StatusBadge, PaymentBadge, RiskBadge } from "@/components/StatusBadge";
-import { Search, Plus, AlertTriangle, X } from "lucide-react";
+import { StatusBadge, RiskBadge } from "@/components/StatusBadge";
+import { Search, Plus, AlertTriangle, X, Upload, Send, MessageCircle, Mail } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type DeclarationStatus = Database["public"]["Enums"]["declaration_status"];
+
+const FEE_TABLE: Record<string, number> = {
+  simplificada: 200,
+  completa: 400,
+  complexa: 800,
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  simplificada: "Simplificada",
+  completa: "Completa",
+  complexa: "Complexa",
+};
 
 const RESULT_LABELS: Record<string, { label: string; color: string }> = {
   a_restituir: { label: "A Restituir", color: "text-status-success" },
@@ -35,7 +47,14 @@ export default function Declarations() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeclarationStatus | "all">("all");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ client_id: "", year_base: "2024", type: "completa" as "completa" | "simplificada" });
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState({
+    client_id: "",
+    year_base: "2024",
+    type: "completa" as "completa" | "simplificada" | "complexa",
+    collaborator_name: "",
+  });
 
   const filtered = declarations.filter((d) => {
     const clientName = (d as any).clients?.name || "";
@@ -48,21 +67,70 @@ export default function Declarations() {
     e.preventDefault();
     if (!user) return;
     const yearBase = parseInt(form.year_base);
+    const fee = FEE_TABLE[form.type] || 0;
     const { error } = await supabase.from("declarations").insert({
       user_id: user.id,
       client_id: form.client_id,
       year_base: yearBase,
       exercise_year: yearBase + 1,
       type: form.type,
-    });
+      fee,
+      collaborator_name: form.collaborator_name || null,
+    } as any);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Declaração criada!" });
+    toast({ title: "Declaração criada!", description: `Honorário: R$ ${fee.toFixed(2)}` });
     queryClient.invalidateQueries({ queryKey: ["declarations"] });
     setShowForm(false);
-    setForm({ client_id: "", year_base: "2024", type: "completa" });
+    setForm({ client_id: "", year_base: "2024", type: "completa", collaborator_name: "" });
+  };
+
+  const handleFileUpload = async (declarationId: string, files: FileList | null) => {
+    if (!files || !user) return;
+    const dec = declarations.find((d) => d.id === declarationId);
+    if (!dec) return;
+
+    for (const file of Array.from(files)) {
+      const path = `${user.id}/${declarationId}/${Date.now()}_${file.name}`;
+      const { error: uploadErr } = await supabase.storage.from("irpf-documents").upload(path, file);
+      if (uploadErr) {
+        toast({ title: "Erro no upload", description: uploadErr.message, variant: "destructive" });
+        continue;
+      }
+      await supabase.from("documents").insert({
+        user_id: user.id,
+        declaration_id: declarationId,
+        client_id: dec.client_id,
+        file_name: file.name,
+        file_path: path,
+        file_type: file.type,
+        category: "outros",
+      });
+    }
+    toast({ title: "Documentos enviados!" });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    setUploadingFor(null);
+  };
+
+  const sendGuide = (type: "whatsapp" | "email", dec: any) => {
+    const client = clients.find((c) => c.id === dec.client_id);
+    if (!client) return;
+
+    const resultText = dec.result ? RESULT_LABELS[dec.result]?.label : "Pendente";
+    const valueText = dec.result_value ? `R$ ${Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
+    const installmentsText = (dec as any).tax_installments ? ` em ${(dec as any).tax_installments}x` : "";
+    const message = `Olá ${client.name}! Sua declaração IRPF ${dec.year_base}/${dec.exercise_year} está com status: ${resultText}${valueText ? ` - ${valueText}${installmentsText}` : ""}. Tipo: ${TYPE_LABELS[dec.type]}. Honorário: R$ ${Number((dec as any).fee || 0).toFixed(2)}.`;
+
+    if (type === "whatsapp") {
+      const phone = (client.phone || "").replace(/\D/g, "");
+      if (!phone) { toast({ title: "Cliente sem telefone cadastrado", variant: "destructive" }); return; }
+      window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
+    } else {
+      if (!client.email) { toast({ title: "Cliente sem e-mail cadastrado", variant: "destructive" }); return; }
+      window.open(`mailto:${client.email}?subject=${encodeURIComponent(`IRPF ${dec.year_base} - Guia`)}&body=${encodeURIComponent(message)}`, "_blank");
+    }
   };
 
   return (
@@ -86,7 +154,7 @@ export default function Declarations() {
           {clients.length === 0 ? (
             <p className="text-sm text-muted-foreground">Cadastre um cliente primeiro antes de criar uma declaração.</p>
           ) : (
-            <form onSubmit={handleSave} className="grid gap-4 sm:grid-cols-3">
+            <form onSubmit={handleSave} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-sm font-medium">Cliente *</label>
                 <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
@@ -99,15 +167,23 @@ export default function Declarations() {
                 <input required type="number" value={form.year_base} onChange={(e) => setForm({ ...form, year_base: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Tipo</label>
+                <label className="mb-1 block text-sm font-medium">Tipo (Honorário)</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as any })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="completa">Completa</option>
-                  <option value="simplificada">Simplificada</option>
+                  <option value="simplificada">Simplificada — R$ {FEE_TABLE.simplificada}</option>
+                  <option value="completa">Completa — R$ {FEE_TABLE.completa}</option>
+                  <option value="complexa">Complexa — R$ {FEE_TABLE.complexa}</option>
                 </select>
               </div>
-              <div className="sm:col-span-3 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
-                <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Criar</button>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Colaborador</label>
+                <input value={form.collaborator_name} onChange={(e) => setForm({ ...form, collaborator_name: e.target.value })} placeholder="Nome do colaborador" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">Honorário: <span className="font-semibold text-foreground">R$ {FEE_TABLE[form.type]?.toFixed(2)}</span> · Comissão (20%): <span className="font-semibold text-primary">R$ {(FEE_TABLE[form.type] * 0.2).toFixed(2)}</span></p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+                  <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Criar</button>
+                </div>
               </div>
             </form>
           )}
@@ -128,6 +204,9 @@ export default function Declarations() {
         </div>
       </div>
 
+      {/* Hidden file input */}
+      <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" onChange={(e) => { if (uploadingFor) handleFileUpload(uploadingFor, e.target.files); }} />
+
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">Carregando...</div>
@@ -140,21 +219,28 @@ export default function Declarations() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Cliente</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Ano</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Tipo</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Resultado</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Risco</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ano</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tipo</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Honorário</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Resultado</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Risco</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Comissão</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((dec) => {
                   const clientName = (dec as any).clients?.name || "—";
                   const initials = clientName.split(" ").map((n: string) => n[0]).slice(0, 2).join("");
+                  const fee = Number((dec as any).fee || 0);
+                  const commission = fee * 0.2;
+                  const collaborator = (dec as any).collaborator_name || "—";
                   return (
                     <tr key={dec.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">{initials}</div>
                           <div>
@@ -163,18 +249,49 @@ export default function Declarations() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-muted-foreground">{dec.year_base}/{dec.exercise_year}</td>
-                      <td className="px-5 py-3.5 text-xs">{dec.type === "completa" ? "Completa" : "Simplificada"}</td>
-                      <td className="px-5 py-3.5"><StatusBadge status={dec.status} /></td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3.5 text-muted-foreground">{dec.year_base}/{dec.exercise_year}</td>
+                      <td className="px-4 py-3.5 text-xs font-medium">{TYPE_LABELS[dec.type] || dec.type}</td>
+                      <td className="px-4 py-3.5 font-medium">R$ {fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3.5"><StatusBadge status={dec.status} /></td>
+                      <td className="px-4 py-3.5">
                         {dec.result ? (
                           <div>
                             <span className={`text-xs font-medium ${RESULT_LABELS[dec.result]?.color || ""}`}>{RESULT_LABELS[dec.result]?.label}</span>
                             {dec.result_value && <p className="text-xs text-muted-foreground">R$ {Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>}
+                            {dec.result === "a_pagar" && (dec as any).tax_installments && (
+                              <p className="text-[10px] text-muted-foreground">{(dec as any).tax_installments}x parcela(s)</p>
+                            )}
                           </div>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-5 py-3.5"><RiskBadge risk={dec.fiscal_risk} /></td>
+                      <td className="px-4 py-3.5"><RiskBadge risk={dec.fiscal_risk} /></td>
+                      <td className="px-4 py-3.5 text-xs">{collaborator}</td>
+                      <td className="px-4 py-3.5 text-xs font-medium text-primary">R$ {commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { setUploadingFor(dec.id); fileRef.current?.click(); }}
+                            title="Upload documentos"
+                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          >
+                            <Upload className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => sendGuide("whatsapp", dec)}
+                            title="Enviar guia por WhatsApp"
+                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-success"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => sendGuide("email", dec)}
+                            title="Enviar guia por E-mail"
+                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
