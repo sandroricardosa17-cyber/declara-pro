@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Phone, Mail, MoreHorizontal, X } from "lucide-react";
+import { Search, Plus, Phone, Mail, X, Eye, EyeOff, Lock } from "lucide-react";
 
 export default function Clients() {
   const { data: clients = [], isLoading } = useClients();
@@ -14,7 +14,8 @@ export default function Clients() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "" });
+  const [form, setForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   const filtered = clients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.cpf.includes(search) || (c.email || "").toLowerCase().includes(search.toLowerCase())
@@ -27,6 +28,7 @@ export default function Clients() {
       ...form,
       user_id: user.id,
       birth_date: form.birth_date || null,
+      gov_password: form.gov_password || null,
     });
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -35,7 +37,11 @@ export default function Clients() {
     toast({ title: "Cliente cadastrado!" });
     queryClient.invalidateQueries({ queryKey: ["clients"] });
     setShowForm(false);
-    setForm({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "" });
+    setForm({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
+  };
+
+  const togglePassword = (id: string) => {
+    setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -50,7 +56,6 @@ export default function Clients() {
         </button>
       </div>
 
-      {/* New client form */}
       {showForm && (
         <div className="rounded-xl border border-border bg-card p-6 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
@@ -87,6 +92,10 @@ export default function Clients() {
               <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="sm:col-span-2">
+              <label className="mb-1 flex items-center gap-1.5 text-sm font-medium"><Lock className="h-3.5 w-3.5" /> Senha GOV.BR</label>
+              <input type="password" value={form.gov_password} onChange={(e) => setForm({ ...form, gov_password: e.target.value })} placeholder="Senha de acesso ao GOV.BR" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium">Observações</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
@@ -107,13 +116,14 @@ export default function Clients() {
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          {clients.length === 0 ? "Nenhum cliente cadastrado. Clique em \"Novo Cliente\" para começar." : "Nenhum resultado encontrado."}
+          {clients.length === 0 ? 'Nenhum cliente cadastrado. Clique em "Novo Cliente" para começar.' : "Nenhum resultado encontrado."}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((client) => {
             const decCount = declarations.filter((d) => d.client_id === client.id).length;
             const initials = client.name.split(" ").map((n) => n[0]).slice(0, 2).join("");
+            const govPass = (client as any).gov_password;
             return (
               <div key={client.id} className="group rounded-xl border border-border bg-card p-5 hover:border-primary/30 hover:shadow-sm transition-all animate-fade-in">
                 <div className="flex items-start justify-between">
@@ -128,6 +138,16 @@ export default function Clients() {
                 <div className="mt-4 space-y-2">
                   {client.phone && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5" />{client.phone}</div>}
                   {client.email && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="h-3.5 w-3.5" />{client.email}</div>}
+                  {govPass && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>GOV.BR: </span>
+                      <span className="font-mono">{showPasswords[client.id] ? govPass : "••••••••"}</span>
+                      <button onClick={() => togglePassword(client.id)} className="hover:text-foreground transition-colors">
+                        {showPasswords[client.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                   <div className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{decCount}</span> declaração(ões)</div>

@@ -7,7 +7,7 @@ export type DeclarationStatus =
   | "em_processamento"
   | "processada";
 
-export type DeclarationType = "completa" | "simplificada";
+export type DeclarationType = "completa" | "simplificada" | "complexa";
 
 export type DeclarationResult = "a_restituir" | "a_pagar" | "sem_imposto";
 

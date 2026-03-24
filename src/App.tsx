@@ -11,6 +11,7 @@ import Declarations from "@/pages/Declarations";
 import Financial from "@/pages/Financial";
 import Tasks from "@/pages/Tasks";
 import Notifications from "@/pages/Notifications";
+import Reports from "@/pages/Reports";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const AppRoutes = () => (
       <Route path="/clientes" element={<Clients />} />
       <Route path="/declaracoes" element={<Declarations />} />
       <Route path="/financeiro" element={<Financial />} />
+      <Route path="/relatorios" element={<Reports />} />
       <Route path="/tarefas" element={<Tasks />} />
       <Route path="/notificacoes" element={<Notifications />} />
     </Route>

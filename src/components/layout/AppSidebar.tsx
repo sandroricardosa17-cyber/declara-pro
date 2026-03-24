@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, FileText, DollarSign, ClipboardList,
-  Bell, Settings, LogOut, Receipt,
+  Bell, Settings, LogOut, Receipt, BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { label: "Clientes", icon: Users, path: "/clientes" },
   { label: "Declarações", icon: FileText, path: "/declaracoes" },
   { label: "Financeiro", icon: DollarSign, path: "/financeiro" },
+  { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { label: "Tarefas", icon: ClipboardList, path: "/tarefas" },
   { label: "Notificações", icon: Bell, path: "/notificacoes" },
 ];

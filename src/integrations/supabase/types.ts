@@ -21,6 +21,7 @@ export type Database = {
           cpf: string
           created_at: string
           email: string | null
+          gov_password: string | null
           id: string
           name: string
           notes: string | null
@@ -35,6 +36,7 @@ export type Database = {
           cpf: string
           created_at?: string
           email?: string | null
+          gov_password?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           cpf?: string
           created_at?: string
           email?: string | null
+          gov_password?: string | null
           id?: string
           name?: string
           notes?: string | null
@@ -62,8 +65,10 @@ export type Database = {
       declarations: {
         Row: {
           client_id: string
+          collaborator_name: string | null
           created_at: string
           exercise_year: number
+          fee: number | null
           fiscal_risk: Database["public"]["Enums"]["fiscal_risk"]
           id: string
           installments: number | null
@@ -74,6 +79,7 @@ export type Database = {
           result_value: number | null
           sent_date: string | null
           status: Database["public"]["Enums"]["declaration_status"]
+          tax_installments: number | null
           type: Database["public"]["Enums"]["declaration_type"]
           updated_at: string
           user_id: string
@@ -81,8 +87,10 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          collaborator_name?: string | null
           created_at?: string
           exercise_year: number
+          fee?: number | null
           fiscal_risk?: Database["public"]["Enums"]["fiscal_risk"]
           id?: string
           installments?: number | null
@@ -93,6 +101,7 @@ export type Database = {
           result_value?: number | null
           sent_date?: string | null
           status?: Database["public"]["Enums"]["declaration_status"]
+          tax_installments?: number | null
           type?: Database["public"]["Enums"]["declaration_type"]
           updated_at?: string
           user_id: string
@@ -100,8 +109,10 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          collaborator_name?: string | null
           created_at?: string
           exercise_year?: number
+          fee?: number | null
           fiscal_risk?: Database["public"]["Enums"]["fiscal_risk"]
           id?: string
           installments?: number | null
@@ -112,6 +123,7 @@ export type Database = {
           result_value?: number | null
           sent_date?: string | null
           status?: Database["public"]["Enums"]["declaration_status"]
+          tax_installments?: number | null
           type?: Database["public"]["Enums"]["declaration_type"]
           updated_at?: string
           user_id?: string
@@ -350,7 +362,7 @@ export type Database = {
         | "enviada"
         | "em_processamento"
         | "processada"
-      declaration_type: "completa" | "simplificada"
+      declaration_type: "completa" | "simplificada" | "complexa"
       document_category:
         | "comprovantes_rendimentos"
         | "despesas_medicas"
@@ -499,7 +511,7 @@ export const Constants = {
         "em_processamento",
         "processada",
       ],
-      declaration_type: ["completa", "simplificada"],
+      declaration_type: ["completa", "simplificada", "complexa"],
       document_category: [
         "comprovantes_rendimentos",
         "despesas_medicas",
