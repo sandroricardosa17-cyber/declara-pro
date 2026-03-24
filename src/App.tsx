@@ -11,6 +11,7 @@ import Declarations from "@/pages/Declarations";
 import Financial from "@/pages/Financial";
 import Tasks from "@/pages/Tasks";
 import Notifications from "@/pages/Notifications";
+import Reports from "@/pages/Reports";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 
