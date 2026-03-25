@@ -43,6 +43,7 @@ const AppRoutes = () => (
       <Route path="/relatorios" element={<Reports />} />
       <Route path="/tarefas" element={<Tasks />} />
       <Route path="/notificacoes" element={<Notifications />} />
+      <Route path="/usuarios" element={<Users />} />
     </Route>
     <Route path="*" element={<NotFound />} />
   </Routes>
