@@ -45,11 +45,9 @@ export default function Auth() {
 
         {/* Form */}
         <div className="rounded-xl border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold mb-1">
-            {isLogin ? "Entrar" : "Criar conta"}
-          </h2>
+          <h2 className="text-lg font-semibold mb-1">Entrar</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            {isLogin ? "Acesse sua conta para continuar" : "Preencha os dados para criar sua conta"}
+            Acesse sua conta para continuar
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
