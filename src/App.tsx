@@ -13,6 +13,7 @@ import Tasks from "@/pages/Tasks";
 import Notifications from "@/pages/Notifications";
 import Reports from "@/pages/Reports";
 import Auth from "@/pages/Auth";
+import Users from "@/pages/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
