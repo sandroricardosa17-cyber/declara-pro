@@ -71,23 +71,6 @@ export default function Auth() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">Nome completo</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Seu nome"
-                    required
-                    className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              </div>
-            )}
-
             <div>
               <label className="mb-1.5 block text-sm font-medium">E-mail</label>
               <div className="relative">
@@ -131,18 +114,9 @@ export default function Auth() {
               disabled={loading}
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+              {loading ? "Carregando..." : "Entrar"}
             </button>
           </form>
-
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isLogin ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
