@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge, RiskBadge } from "@/components/StatusBadge";
-import { Search, Plus, AlertTriangle, X, Upload, Send, MessageCircle, Mail } from "lucide-react";
+import { Search, Plus, AlertTriangle, X, Upload, MessageCircle, Mail, ChevronDown, User } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type DeclarationStatus = Database["public"]["Enums"]["declaration_status"];
@@ -28,14 +28,19 @@ const RESULT_LABELS: Record<string, { label: string; color: string }> = {
   sem_imposto: { label: "Sem Imposto", color: "text-muted-foreground" },
 };
 
-const statusFilters: { value: DeclarationStatus | "all"; label: string }[] = [
-  { value: "all", label: "Todas" },
+const STATUS_OPTIONS: { value: DeclarationStatus; label: string }[] = [
   { value: "aguardando_documentos", label: "Aguardando Docs" },
   { value: "em_andamento", label: "Em Andamento" },
   { value: "em_revisao", label: "Em Revisão" },
   { value: "finalizada", label: "Finalizada" },
   { value: "enviada", label: "Enviada" },
+  { value: "em_processamento", label: "Em Processamento" },
   { value: "processada", label: "Processada" },
+];
+
+const statusFilters: { value: DeclarationStatus | "all"; label: string }[] = [
+  { value: "all", label: "Todas" },
+  ...STATUS_OPTIONS,
 ];
 
 export default function Declarations() {
@@ -48,6 +53,9 @@ export default function Declarations() {
   const [statusFilter, setStatusFilter] = useState<DeclarationStatus | "all">("all");
   const [showForm, setShowForm] = useState(false);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [editingCollaborator, setEditingCollaborator] = useState<string | null>(null);
+  const [tempCollaborator, setTempCollaborator] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     client_id: "",
@@ -62,6 +70,12 @@ export default function Declarations() {
     const matchStatus = statusFilter === "all" || d.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  // Count per status for tabs
+  const statusCounts = declarations.reduce((acc, d) => {
+    acc[d.status] = (acc[d.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,11 +101,38 @@ export default function Declarations() {
     setForm({ client_id: "", year_base: "2024", type: "completa", collaborator_name: "" });
   };
 
+  const handleStatusChange = async (declarationId: string, newStatus: DeclarationStatus) => {
+    const { error } = await supabase
+      .from("declarations")
+      .update({ status: newStatus })
+      .eq("id", declarationId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Status atualizado!" });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    setEditingStatus(null);
+  };
+
+  const handleCollaboratorChange = async (declarationId: string, name: string) => {
+    const { error } = await supabase
+      .from("declarations")
+      .update({ collaborator_name: name || null } as any)
+      .eq("id", declarationId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Colaborador atualizado!" });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    setEditingCollaborator(null);
+  };
+
   const handleFileUpload = async (declarationId: string, files: FileList | null) => {
     if (!files || !user) return;
     const dec = declarations.find((d) => d.id === declarationId);
     if (!dec) return;
-
     for (const file of Array.from(files)) {
       const path = `${user.id}/${declarationId}/${Date.now()}_${file.name}`;
       const { error: uploadErr } = await supabase.storage.from("irpf-documents").upload(path, file);
@@ -117,12 +158,10 @@ export default function Declarations() {
   const sendGuide = (type: "whatsapp" | "email", dec: any) => {
     const client = clients.find((c) => c.id === dec.client_id);
     if (!client) return;
-
     const resultText = dec.result ? RESULT_LABELS[dec.result]?.label : "Pendente";
     const valueText = dec.result_value ? `R$ ${Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
     const installmentsText = (dec as any).tax_installments ? ` em ${(dec as any).tax_installments}x` : "";
     const message = `Olá ${client.name}! Sua declaração IRPF ${dec.year_base}/${dec.exercise_year} está com status: ${resultText}${valueText ? ` - ${valueText}${installmentsText}` : ""}. Tipo: ${TYPE_LABELS[dec.type]}. Honorário: R$ ${Number((dec as any).fee || 0).toFixed(2)}.`;
-
     if (type === "whatsapp") {
       const phone = (client.phone || "").replace(/\D/g, "");
       if (!phone) { toast({ title: "Cliente sem telefone cadastrado", variant: "destructive" }); return; }
@@ -190,17 +229,24 @@ export default function Declarations() {
         </div>
       )}
 
+      {/* Search + Status filter tabs with counts */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input type="text" placeholder="Buscar por cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-64 rounded-lg border border-input bg-card pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="flex gap-1.5 overflow-x-auto">
-          {statusFilters.map((f) => (
-            <button key={f.value} onClick={() => setStatusFilter(f.value)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === f.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-              {f.label}
-            </button>
-          ))}
+          {statusFilters.map((f) => {
+            const count = f.value === "all" ? declarations.length : (statusCounts[f.value] || 0);
+            return (
+              <button key={f.value} onClick={() => setStatusFilter(f.value)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${statusFilter === f.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                {f.label}
+                <span className={`inline-flex items-center justify-center rounded-full min-w-[18px] h-[18px] px-1 text-[10px] font-bold ${statusFilter === f.value ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -212,7 +258,7 @@ export default function Declarations() {
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">Carregando...</div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-            {declarations.length === 0 ? "Nenhuma declaração. Crie a primeira!" : "Nenhum resultado."}
+            {declarations.length === 0 ? "Nenhuma declaração. Crie a primeira!" : "Nenhum resultado para este filtro."}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -225,7 +271,6 @@ export default function Declarations() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Honorário</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Resultado</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Risco</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Comissão</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ações</th>
@@ -237,7 +282,7 @@ export default function Declarations() {
                   const initials = clientName.split(" ").map((n: string) => n[0]).slice(0, 2).join("");
                   const fee = Number((dec as any).fee || 0);
                   const commission = fee * 0.2;
-                  const collaborator = (dec as any).collaborator_name || "—";
+                  const collaborator = (dec as any).collaborator_name || "";
                   return (
                     <tr key={dec.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3.5">
@@ -252,7 +297,33 @@ export default function Declarations() {
                       <td className="px-4 py-3.5 text-muted-foreground">{dec.year_base}/{dec.exercise_year}</td>
                       <td className="px-4 py-3.5 text-xs font-medium">{TYPE_LABELS[dec.type] || dec.type}</td>
                       <td className="px-4 py-3.5 font-medium">R$ {fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3.5"><StatusBadge status={dec.status} /></td>
+
+                      {/* Editable Status */}
+                      <td className="px-4 py-3.5">
+                        {editingStatus === dec.id ? (
+                          <select
+                            autoFocus
+                            defaultValue={dec.status}
+                            onChange={(e) => handleStatusChange(dec.id, e.target.value as DeclarationStatus)}
+                            onBlur={() => setEditingStatus(null)}
+                            className="h-8 rounded-lg border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <button
+                            onClick={() => setEditingStatus(dec.id)}
+                            className="group flex items-center gap-1"
+                            title="Clique para alterar o status"
+                          >
+                            <StatusBadge status={dec.status} />
+                            <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        )}
+                      </td>
+
                       <td className="px-4 py-3.5">
                         {dec.result ? (
                           <div>
@@ -264,30 +335,41 @@ export default function Declarations() {
                           </div>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-4 py-3.5"><RiskBadge risk={dec.fiscal_risk} /></td>
-                      <td className="px-4 py-3.5 text-xs">{collaborator}</td>
+
+                      {/* Editable Collaborator */}
+                      <td className="px-4 py-3.5">
+                        {editingCollaborator === dec.id ? (
+                          <input
+                            autoFocus
+                            defaultValue={collaborator}
+                            placeholder="Nome..."
+                            onBlur={(e) => handleCollaboratorChange(dec.id, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleCollaboratorChange(dec.id, (e.target as HTMLInputElement).value); }}
+                            className="h-8 w-28 rounded-lg border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => { setEditingCollaborator(dec.id); setTempCollaborator(collaborator); }}
+                            className="group flex items-center gap-1 text-xs"
+                            title="Clique para alterar o colaborador"
+                          >
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <span>{collaborator || "Atribuir"}</span>
+                            <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        )}
+                      </td>
+
                       <td className="px-4 py-3.5 text-xs font-medium text-primary">R$ {commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => { setUploadingFor(dec.id); fileRef.current?.click(); }}
-                            title="Upload documentos"
-                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          >
+                          <button onClick={() => { setUploadingFor(dec.id); fileRef.current?.click(); }} title="Upload documentos" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                             <Upload className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => sendGuide("whatsapp", dec)}
-                            title="Enviar guia por WhatsApp"
-                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-success"
-                          >
+                          <button onClick={() => sendGuide("whatsapp", dec)} title="Enviar guia por WhatsApp" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-success">
                             <MessageCircle className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => sendGuide("email", dec)}
-                            title="Enviar guia por E-mail"
-                            className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info"
-                          >
+                          <button onClick={() => sendGuide("email", dec)} title="Enviar guia por E-mail" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info">
                             <Mail className="h-4 w-4" />
                           </button>
                         </div>
