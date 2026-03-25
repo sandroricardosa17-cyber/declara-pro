@@ -13,6 +13,7 @@ import Tasks from "@/pages/Tasks";
 import Notifications from "@/pages/Notifications";
 import Reports from "@/pages/Reports";
 import Auth from "@/pages/Auth";
+import Users from "@/pages/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const AppRoutes = () => (
       <Route path="/relatorios" element={<Reports />} />
       <Route path="/tarefas" element={<Tasks />} />
       <Route path="/notificacoes" element={<Notifications />} />
+      <Route path="/usuarios" element={<Users />} />
     </Route>
     <Route path="*" element={<NotFound />} />
   </Routes>
