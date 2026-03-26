@@ -16,6 +16,7 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
 
   const filtered = clients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.cpf.includes(search) || (c.email || "").toLowerCase().includes(search.toLowerCase())
