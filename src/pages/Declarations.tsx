@@ -1,11 +1,15 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDeclarations, useClients } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge, RiskBadge } from "@/components/StatusBadge";
-import { Search, Plus, AlertTriangle, X, Upload, MessageCircle, Mail, ChevronDown, User } from "lucide-react";
+import {
+  Search, Plus, AlertTriangle, X, Upload, MessageCircle, Mail,
+  ChevronDown, User, ChevronRight, Eye, Edit2, FileText, Download,
+} from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type DeclarationStatus = Database["public"]["Enums"]["declaration_status"];
@@ -38,13 +42,25 @@ const STATUS_OPTIONS: { value: DeclarationStatus; label: string }[] = [
   { value: "processada", label: "Processada" },
 ];
 
+const NEXT_STATUS: Record<string, { next: DeclarationStatus; label: string }> = {
+  aguardando_documentos: { next: "em_andamento", label: "Iniciar" },
+  em_andamento: { next: "em_revisao", label: "Enviar p/ Revisão" },
+  em_revisao: { next: "finalizada", label: "Finalizar" },
+  finalizada: { next: "enviada", label: "Enviar" },
+  enviada: { next: "em_processamento", label: "Em Processamento" },
+  em_processamento: { next: "processada", label: "Processada" },
+};
+
 const statusFilters: { value: DeclarationStatus | "all"; label: string }[] = [
   { value: "all", label: "Todas" },
   ...STATUS_OPTIONS,
 ];
 
+const COMMISSION_RATE = 0.10;
+
 export default function Declarations() {
-  const { data: declarations = [], isLoading } = useDeclarations();
+  const isAdmin = useIsAdmin();
+  const { data: rawDeclarations = [], isLoading } = useDeclarations();
   const { data: clients = [] } = useClients();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -55,13 +71,42 @@ export default function Declarations() {
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [editingCollaborator, setEditingCollaborator] = useState<string | null>(null);
-  const [tempCollaborator, setTempCollaborator] = useState("");
+  const [viewingDocs, setViewingDocs] = useState<string | null>(null);
+  const [editingDec, setEditingDec] = useState<any | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     client_id: "",
     year_base: "2024",
     type: "completa" as "completa" | "simplificada" | "complexa",
     collaborator_name: "",
+  });
+  const [editForm, setEditForm] = useState({
+    type: "completa",
+    fee: 0,
+    collaborator_name: "",
+    result: "" as string,
+    result_value: "",
+    tax_installments: "",
+    malha_fina: false,
+    fiscal_risk: "baixo",
+  });
+
+  // Use all declarations (admin sees all via RLS)
+  const declarations = rawDeclarations;
+
+  // Fetch documents for viewing
+  const { data: docs = [] } = useQuery({
+    queryKey: ["documents", viewingDocs],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("declaration_id", viewingDocs!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!viewingDocs,
   });
 
   const filtered = declarations.filter((d) => {
@@ -71,7 +116,6 @@ export default function Declarations() {
     return matchSearch && matchStatus;
   });
 
-  // Count per status for tabs
   const statusCounts = declarations.reduce((acc, d) => {
     acc[d.status] = (acc[d.status] || 0) + 1;
     return acc;
@@ -99,6 +143,30 @@ export default function Declarations() {
     queryClient.invalidateQueries({ queryKey: ["declarations"] });
     setShowForm(false);
     setForm({ client_id: "", year_base: "2024", type: "completa", collaborator_name: "" });
+  };
+
+  const handleAdvanceStatus = async (dec: any) => {
+    const next = NEXT_STATUS[dec.status];
+    if (!next) return;
+
+    // If advancing to "enviada", send email notification
+    if (next.next === "enviada") {
+      const client = clients.find((c) => c.id === dec.client_id);
+      if (client?.email) {
+        sendGuide("email", dec);
+      }
+    }
+
+    const { error } = await supabase
+      .from("declarations")
+      .update({ status: next.next })
+      .eq("id", dec.id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Status atualizado para: ${STATUS_OPTIONS.find(s => s.value === next.next)?.label}` });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
   };
 
   const handleStatusChange = async (declarationId: string, newStatus: DeclarationStatus) => {
@@ -152,7 +220,55 @@ export default function Declarations() {
     }
     toast({ title: "Documentos enviados!" });
     queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    queryClient.invalidateQueries({ queryKey: ["documents"] });
     setUploadingFor(null);
+  };
+
+  const handleViewDoc = async (filePath: string) => {
+    const { data } = await supabase.storage.from("irpf-documents").createSignedUrl(filePath, 3600);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank");
+    } else {
+      toast({ title: "Erro ao abrir documento", variant: "destructive" });
+    }
+  };
+
+  const openEditModal = (dec: any) => {
+    setEditingDec(dec);
+    setEditForm({
+      type: dec.type,
+      fee: Number(dec.fee || 0),
+      collaborator_name: dec.collaborator_name || "",
+      result: dec.result || "",
+      result_value: dec.result_value ? String(dec.result_value) : "",
+      tax_installments: dec.tax_installments ? String(dec.tax_installments) : "",
+      malha_fina: dec.malha_fina || false,
+      fiscal_risk: dec.fiscal_risk || "baixo",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingDec) return;
+    const { error } = await supabase
+      .from("declarations")
+      .update({
+        type: editForm.type,
+        fee: editForm.fee,
+        collaborator_name: editForm.collaborator_name || null,
+        result: editForm.result || null,
+        result_value: editForm.result_value ? parseFloat(editForm.result_value) : null,
+        tax_installments: editForm.tax_installments ? parseInt(editForm.tax_installments) : null,
+        malha_fina: editForm.malha_fina,
+        fiscal_risk: editForm.fiscal_risk,
+      } as any)
+      .eq("id", editingDec.id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Declaração atualizada!" });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    setEditingDec(null);
   };
 
   const sendGuide = (type: "whatsapp" | "email", dec: any) => {
@@ -160,15 +276,16 @@ export default function Declarations() {
     if (!client) return;
     const resultText = dec.result ? RESULT_LABELS[dec.result]?.label : "Pendente";
     const valueText = dec.result_value ? `R$ ${Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
-    const installmentsText = (dec as any).tax_installments ? ` em ${(dec as any).tax_installments}x` : "";
-    const message = `Olá ${client.name}! Sua declaração IRPF ${dec.year_base}/${dec.exercise_year} está com status: ${resultText}${valueText ? ` - ${valueText}${installmentsText}` : ""}. Tipo: ${TYPE_LABELS[dec.type]}. Honorário: R$ ${Number((dec as any).fee || 0).toFixed(2)}.`;
+    const installmentsText = dec.tax_installments ? ` em ${dec.tax_installments}x` : "";
+    const statusLabel = STATUS_OPTIONS.find(s => s.value === dec.status)?.label || dec.status;
+    const message = `Olá ${client.name}! Sua declaração IRPF ${dec.year_base}/${dec.exercise_year} está com status: ${statusLabel}. Resultado: ${resultText}${valueText ? ` - ${valueText}${installmentsText}` : ""}. Tipo: ${TYPE_LABELS[dec.type]}. Honorário: R$ ${Number(dec.fee || 0).toFixed(2)}.`;
     if (type === "whatsapp") {
       const phone = (client.phone || "").replace(/\D/g, "");
       if (!phone) { toast({ title: "Cliente sem telefone cadastrado", variant: "destructive" }); return; }
       window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
     } else {
       if (!client.email) { toast({ title: "Cliente sem e-mail cadastrado", variant: "destructive" }); return; }
-      window.open(`mailto:${client.email}?subject=${encodeURIComponent(`IRPF ${dec.year_base} - Guia`)}&body=${encodeURIComponent(message)}`, "_blank");
+      window.open(`mailto:${client.email}?subject=${encodeURIComponent(`IRPF ${dec.year_base} - Atualização`)}&body=${encodeURIComponent(message)}`, "_blank");
     }
   };
 
@@ -177,7 +294,10 @@ export default function Declarations() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Declarações IRPF</h1>
-          <p className="text-sm text-muted-foreground">{declarations.length} declarações registradas</p>
+          <p className="text-sm text-muted-foreground">
+            {declarations.length} declarações registradas
+            {isAdmin && <span className="ml-1 text-primary">(visão admin)</span>}
+          </p>
         </div>
         <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
           <Plus className="h-4 w-4" /> Nova Declaração
@@ -218,7 +338,7 @@ export default function Declarations() {
                 <input value={form.collaborator_name} onChange={(e) => setForm({ ...form, collaborator_name: e.target.value })} placeholder="Nome do colaborador" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="sm:col-span-2 lg:col-span-4 flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">Honorário: <span className="font-semibold text-foreground">R$ {FEE_TABLE[form.type]?.toFixed(2)}</span> · Comissão (20%): <span className="font-semibold text-primary">R$ {(FEE_TABLE[form.type] * 0.2).toFixed(2)}</span></p>
+                <p className="text-sm text-muted-foreground">Honorário: <span className="font-semibold text-foreground">R$ {FEE_TABLE[form.type]?.toFixed(2)}</span> · Comissão (10%): <span className="font-semibold text-primary">R$ {(FEE_TABLE[form.type] * COMMISSION_RATE).toFixed(2)}</span></p>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
                   <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Criar</button>
@@ -270,6 +390,7 @@ export default function Declarations() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tipo</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Honorário</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Avançar</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Resultado</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Comissão</th>
@@ -281,8 +402,9 @@ export default function Declarations() {
                   const clientName = (dec as any).clients?.name || "—";
                   const initials = clientName.split(" ").map((n: string) => n[0]).slice(0, 2).join("");
                   const fee = Number((dec as any).fee || 0);
-                  const commission = fee * 0.2;
+                  const commission = fee * COMMISSION_RATE;
                   const collaborator = (dec as any).collaborator_name || "";
+                  const nextAction = NEXT_STATUS[dec.status];
                   return (
                     <tr key={dec.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3.5">
@@ -324,6 +446,21 @@ export default function Declarations() {
                         )}
                       </td>
 
+                      {/* Advance button */}
+                      <td className="px-4 py-3.5">
+                        {nextAction ? (
+                          <button
+                            onClick={() => handleAdvanceStatus(dec)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                          >
+                            {nextAction.label}
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Concluída</span>
+                        )}
+                      </td>
+
                       <td className="px-4 py-3.5">
                         {dec.result ? (
                           <div>
@@ -349,7 +486,7 @@ export default function Declarations() {
                           />
                         ) : (
                           <button
-                            onClick={() => { setEditingCollaborator(dec.id); setTempCollaborator(collaborator); }}
+                            onClick={() => setEditingCollaborator(dec.id)}
                             className="group flex items-center gap-1 text-xs"
                             title="Clique para alterar o colaborador"
                           >
@@ -363,6 +500,12 @@ export default function Declarations() {
                       <td className="px-4 py-3.5 text-xs font-medium text-primary">R$ {commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">
+                          <button onClick={() => openEditModal(dec)} title="Editar declaração" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setViewingDocs(dec.id)} title="Ver documentos" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                            <FileText className="h-4 w-4" />
+                          </button>
                           <button onClick={() => { setUploadingFor(dec.id); fileRef.current?.click(); }} title="Upload documentos" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                             <Upload className="h-4 w-4" />
                           </button>
@@ -382,6 +525,114 @@ export default function Declarations() {
           </div>
         )}
       </div>
+
+      {/* View Documents Modal */}
+      {viewingDocs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Documentos</h2>
+              <button onClick={() => setViewingDocs(null)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            {docs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum documento enviado.</p>
+            ) : (
+              <div className="space-y-2">
+                {docs.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{doc.file_name}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(doc.created_at).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleViewDoc(doc.file_path)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Eye className="h-3 w-3" /> Ver
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Declaration Modal */}
+      {editingDec && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Editar Declaração</h2>
+              <button onClick={() => setEditingDec(null)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Tipo</label>
+                  <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value, fee: FEE_TABLE[e.target.value] || editForm.fee })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="simplificada">Simplificada</option>
+                    <option value="completa">Completa</option>
+                    <option value="complexa">Complexa</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Honorário (R$)</label>
+                  <input type="number" value={editForm.fee} onChange={(e) => setEditForm({ ...editForm, fee: parseFloat(e.target.value) || 0 })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Colaborador</label>
+                <input value={editForm.collaborator_name} onChange={(e) => setEditForm({ ...editForm, collaborator_name: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Resultado</label>
+                  <select value={editForm.result} onChange={(e) => setEditForm({ ...editForm, result: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Sem resultado</option>
+                    <option value="a_restituir">A Restituir</option>
+                    <option value="a_pagar">A Pagar</option>
+                    <option value="sem_imposto">Sem Imposto</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Valor (R$)</label>
+                  <input type="number" step="0.01" value={editForm.result_value} onChange={(e) => setEditForm({ ...editForm, result_value: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+              </div>
+              {editForm.result === "a_pagar" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Nº de Parcelas do Imposto</label>
+                  <input type="number" min="1" max="8" value={editForm.tax_installments} onChange={(e) => setEditForm({ ...editForm, tax_installments: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Risco Fiscal</label>
+                  <select value={editForm.fiscal_risk} onChange={(e) => setEditForm({ ...editForm, fiscal_risk: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="baixo">Baixo</option>
+                    <option value="medio">Médio</option>
+                    <option value="alto">Alto</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                    <input type="checkbox" checked={editForm.malha_fina} onChange={(e) => setEditForm({ ...editForm, malha_fina: e.target.checked })} className="rounded" />
+                    Malha Fina
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setEditingDec(null)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+                <button onClick={handleEditSave} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,24 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import {
   LayoutDashboard, Users, FileText, DollarSign, ClipboardList,
   Bell, Settings, LogOut, Receipt, BarChart3, UserPlus,
 } from "lucide-react";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { label: "Clientes", icon: Users, path: "/clientes" },
-  { label: "Declarações", icon: FileText, path: "/declaracoes" },
-  { label: "Financeiro", icon: DollarSign, path: "/financeiro" },
-  { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
-  { label: "Tarefas", icon: ClipboardList, path: "/tarefas" },
-  { label: "Notificações", icon: Bell, path: "/notificacoes" },
-  { label: "Usuários", icon: UserPlus, path: "/usuarios" },
-];
-
 export default function AppSidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const isAdmin = useIsAdmin();
+
+  const navItems = [
+    { label: "Dashboard", icon: LayoutDashboard, path: "/" },
+    { label: "Clientes", icon: Users, path: "/clientes" },
+    { label: "Declarações", icon: FileText, path: "/declaracoes" },
+    { label: "Financeiro", icon: DollarSign, path: "/financeiro" },
+    { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
+    { label: "Tarefas", icon: ClipboardList, path: "/tarefas" },
+    { label: "Notificações", icon: Bell, path: "/notificacoes" },
+    ...(isAdmin ? [{ label: "Usuários", icon: UserPlus, path: "/usuarios" }] : []),
+  ];
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
