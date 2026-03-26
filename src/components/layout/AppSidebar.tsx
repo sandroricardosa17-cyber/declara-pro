@@ -29,7 +29,7 @@ export default function AppSidebar() {
           <Receipt className="h-5 w-5 text-sidebar-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-sm font-bold text-sidebar-accent-foreground">IRPF Control</h1>
+          <h1 className="text-sm font-bold text-sidebar-accent-foreground"><h1 className="text-sm font-bold text-sidebar-accent-foreground">IR Control</h1></h1>
           <p className="text-[10px] text-sidebar-foreground/60">Gestão de Declarações</p>
         </div>
       </div>
