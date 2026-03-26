@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Receipt, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const SSO_PASSWORD = "sso_auto_login_2026";
-const SSO_VALIDATE_URL = "https://xmvspnueewjsdtrhoyrk.supabase.co/functions/v1/validate-sso-token";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
