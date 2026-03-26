@@ -1,4 +1,4 @@
-import { FileText, Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useClients, useDeclarations, usePayments } from "@/hooks/useData";
@@ -48,7 +48,7 @@ export default function Dashboard() {
         <MetricCard
           title="Total Faturado"
           value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-          subtitle={`R$ ${received.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} recebido`}
+          subtitle={`R$ ${completedRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} concluído`}
           icon={DollarSign}
         />
       </div>
