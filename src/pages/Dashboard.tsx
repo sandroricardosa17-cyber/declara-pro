@@ -38,7 +38,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do exercício 2025</p>
+        <p className="text-sm text-muted-foreground">Visão geral do exercício {new Date().getFullYear()}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
