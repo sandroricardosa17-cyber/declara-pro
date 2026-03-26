@@ -1,4 +1,4 @@
-import { FileText, Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useClients, useDeclarations, usePayments } from "@/hooks/useData";
@@ -15,13 +15,16 @@ export default function Dashboard() {
   const { data: declarations = [] } = useDeclarations();
   const { data: payments = [] } = usePayments();
 
-  const currentYear = declarations.filter((d) => d.exercise_year === 2025);
+  const currentYear = declarations.filter((d) => d.exercise_year === new Date().getFullYear());
   const pending = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const inProgress = currentYear.filter((d) => ["em_andamento", "em_revisao"].includes(d.status)).length;
   const completed = currentYear.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
-  const totalRevenue = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const received = payments.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
+  // Revenue from declaration fees (all declarations, not just current year)
+  const totalRevenue = declarations.reduce((s, d) => s + Number((d as any).fee || 0), 0);
+  const completedRevenue = declarations
+    .filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status))
+    .reduce((s, d) => s + Number((d as any).fee || 0), 0);
 
   const noDocs = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const pendingPayments = payments.filter((p) => p.status === "pendente").reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -35,7 +38,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do exercício 2025</p>
+        <p className="text-sm text-muted-foreground">Visão geral do exercício {new Date().getFullYear()}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -45,7 +48,7 @@ export default function Dashboard() {
         <MetricCard
           title="Total Faturado"
           value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-          subtitle={`R$ ${received.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} recebido`}
+          subtitle={`R$ ${completedRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} concluído`}
           icon={DollarSign}
         />
       </div>
