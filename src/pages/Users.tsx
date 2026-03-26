@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Users as UsersIcon, Mail, Lock, User, Shield, X, ShieldAlert } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Shield, X } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 interface Profile {
@@ -21,7 +21,7 @@ interface UserRole {
 }
 
 export default function Users() {
-  const { user } = useAuth();
+  useAuth();
   const isAdmin = useIsAdmin();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -34,11 +34,6 @@ export default function Users() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "funcionario">("funcionario");
 
-  // Redirect non-admins
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
   const fetchData = async () => {
     const [{ data: profilesData }, { data: rolesData }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -49,8 +44,12 @@ export default function Users() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAdmin) fetchData();
+  }, [isAdmin]);
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   const getRoleLabel = (userId: string) => {
     const userRole = roles.find((r) => r.user_id === userId);

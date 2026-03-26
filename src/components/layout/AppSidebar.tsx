@@ -8,7 +8,7 @@ import {
 
 export default function AppSidebar() {
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const isAdmin = useIsAdmin();
 
   const navItems = [

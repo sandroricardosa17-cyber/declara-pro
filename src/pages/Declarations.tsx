@@ -1,14 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useDeclarations, useClients } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { StatusBadge, RiskBadge } from "@/components/StatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   Search, Plus, AlertTriangle, X, Upload, MessageCircle, Mail,
-  ChevronDown, User, ChevronRight, Eye, Edit2, FileText, Download,
+  ChevronDown, User, ChevronRight, Eye, Edit2, FileText,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
