@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Users as UsersIcon, Mail, Lock, User, Shield, X } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Shield, X } from "lucide-react";
+import { Navigate } from "react-router-dom";
 
 interface Profile {
   id: string;
@@ -19,7 +21,8 @@ interface UserRole {
 }
 
 export default function Users() {
-  const { user } = useAuth();
+  useAuth();
+  const isAdmin = useIsAdmin();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -41,8 +44,12 @@ export default function Users() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAdmin) fetchData();
+  }, [isAdmin]);
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   const getRoleLabel = (userId: string) => {
     const userRole = roles.find((r) => r.user_id === userId);
@@ -97,7 +104,6 @@ export default function Users() {
         </button>
       </div>
 
-      {/* Create User Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
@@ -113,68 +119,34 @@ export default function Users() {
                 <label className="mb-1.5 block text-sm font-medium">Nome completo</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nome do usuário"
-                    required
-                    className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nome do usuário" required className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
-
               <div>
                 <label className="mb-1.5 block text-sm font-medium">E-mail</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@exemplo.com"
-                    required
-                    className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" required className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
-
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Senha</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                    required
-                    minLength={6}
-                    className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
-
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Função</label>
                 <div className="relative">
                   <Shield className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as "admin" | "funcionario")}
-                    className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
-                  >
+                  <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "funcionario")} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
                     <option value="funcionario">Funcionário</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <button type="submit" disabled={loading} className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
                 {loading ? "Criando..." : "Criar Usuário"}
               </button>
             </form>
@@ -182,7 +154,6 @@ export default function Users() {
         </div>
       )}
 
-      {/* Users Table */}
       <div className="rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full">

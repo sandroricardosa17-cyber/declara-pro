@@ -26,7 +26,7 @@ export default function Reports() {
   const finalizadas = declarations.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
   const totalFee = declarations.reduce((s, d) => s + Number((d as any).fee || 0), 0);
-  const totalCommission = totalFee * 0.2;
+  const totalCommission = totalFee * 0.1;
 
   const totalPaid = payments.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
   const totalPending = payments.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -114,7 +114,7 @@ export default function Reports() {
           <div class="metric"><div class="metric-title">Valor Total Honorários</div><div class="metric-value">R$ ${totalFee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
           <div class="metric"><div class="metric-title">Recebido</div><div class="metric-value text-success">R$ ${totalPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
           <div class="metric"><div class="metric-title">A Receber</div><div class="metric-value">R$ ${totalPending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
-          <div class="metric"><div class="metric-title">Total Comissões (20%)</div><div class="metric-value text-primary">R$ ${totalCommission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
+          <div class="metric"><div class="metric-title">Total Comissões (10%)</div><div class="metric-value text-primary">R$ ${totalCommission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
         </div>
 
         <div class="grid-2">
@@ -132,16 +132,16 @@ export default function Reports() {
         </div>
 
         <div class="section">
-          <h2>Comissões por Colaborador (20%)</h2>
+          <h2>Comissões por Colaborador (10%)</h2>
           <table>
-            <thead><tr><th>Colaborador</th><th>Declarações</th><th>Honorários</th><th>Comissão</th></tr></thead>
+            <thead><tr><th>Colaborador</th><th>Declarações</th><th>Honorários</th><th>Comissão (10%)</th></tr></thead>
             <tbody>
               ${byCollaborator.map(([name, data]) => `
                 <tr>
                   <td>${name}</td>
                   <td>${data.count}</td>
                   <td>R$ ${data.fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                  <td class="text-primary">R$ ${(data.fee * 0.2).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                  <td class="text-primary">R$ ${(data.fee * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -213,7 +213,7 @@ export default function Reports() {
           <MetricCard title="Valor Total Honorários" value={`R$ ${totalFee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} icon={DollarSign} />
           <MetricCard title="Recebido" value={`R$ ${totalPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} icon={CheckCircle} variant="primary" />
           <MetricCard title="A Receber" value={`R$ ${totalPending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} subtitle={`${pendingCount} pendente(s)`} icon={Clock} variant="warning" />
-          <MetricCard title="Total Comissões (20%)" value={`R$ ${totalCommission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} icon={TrendingUp} />
+          <MetricCard title="Total Comissões (10%)" value={`R$ ${totalCommission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} icon={TrendingUp} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 mb-6">
@@ -287,7 +287,7 @@ export default function Reports() {
         {/* Collaborators */}
         <div className="rounded-xl border border-border bg-card mb-6">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="font-semibold flex items-center gap-2"><Users className="h-4 w-4" /> Comissões por Colaborador (20%)</h2>
+            <h2 className="font-semibold flex items-center gap-2"><Users className="h-4 w-4" /> Comissões por Colaborador (10%)</h2>
           </div>
           {byCollaborator.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-muted-foreground">Nenhuma declaração.</div>
@@ -298,7 +298,7 @@ export default function Reports() {
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Declarações</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Honorários</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Comissão (20%)</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Comissão (10%)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -307,7 +307,7 @@ export default function Reports() {
                     <td className="px-5 py-3.5 font-medium">{name}</td>
                     <td className="px-5 py-3.5">{data.count}</td>
                     <td className="px-5 py-3.5">R$ {data.fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                    <td className="px-5 py-3.5 font-medium text-primary">R$ {(data.fee * 0.2).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                    <td className="px-5 py-3.5 font-medium text-primary">R$ {(data.fee * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
