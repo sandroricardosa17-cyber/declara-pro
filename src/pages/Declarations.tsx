@@ -145,17 +145,19 @@ export default function Declarations() {
     setForm({ client_id: "", year_base: "2024", type: "completa", collaborator_name: "" });
   };
 
+  const notifyClient = async (declarationId: string, newStatus: string) => {
+    try {
+      await supabase.functions.invoke("notify-client", {
+        body: { declaration_id: declarationId, new_status: newStatus },
+      });
+    } catch (err) {
+      console.error("Notification error:", err);
+    }
+  };
+
   const handleAdvanceStatus = async (dec: any) => {
     const next = NEXT_STATUS[dec.status];
     if (!next) return;
-
-    // If advancing to "enviada", send email notification
-    if (next.next === "enviada") {
-      const client = clients.find((c) => c.id === dec.client_id);
-      if (client?.email) {
-        sendGuide("email", dec);
-      }
-    }
 
     const { error } = await supabase
       .from("declarations")
@@ -167,6 +169,8 @@ export default function Declarations() {
     }
     toast({ title: `Status atualizado para: ${STATUS_OPTIONS.find(s => s.value === next.next)?.label}` });
     queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    // Send notification
+    notifyClient(dec.id, next.next);
   };
 
   const handleStatusChange = async (declarationId: string, newStatus: DeclarationStatus) => {
@@ -181,6 +185,8 @@ export default function Declarations() {
     toast({ title: "Status atualizado!" });
     queryClient.invalidateQueries({ queryKey: ["declarations"] });
     setEditingStatus(null);
+    // Send notification
+    notifyClient(declarationId, newStatus);
   };
 
   const handleCollaboratorChange = async (declarationId: string, name: string) => {

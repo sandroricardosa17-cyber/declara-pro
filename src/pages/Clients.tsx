@@ -16,6 +16,7 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
 
   const filtered = clients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.cpf.includes(search) || (c.email || "").toLowerCase().includes(search.toLowerCase())
@@ -93,7 +94,12 @@ export default function Clients() {
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 flex items-center gap-1.5 text-sm font-medium"><Lock className="h-3.5 w-3.5" /> Senha GOV.BR</label>
-              <input type="password" value={form.gov_password} onChange={(e) => setForm({ ...form, gov_password: e.target.value })} placeholder="Senha de acesso ao GOV.BR" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <div className="relative">
+                <input type={showFormPassword ? "text" : "password"} value={form.gov_password} onChange={(e) => setForm({ ...form, gov_password: e.target.value })} placeholder="Senha de acesso ao GOV.BR" className="h-9 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                <button type="button" onClick={() => setShowFormPassword(!showFormPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                  {showFormPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium">Observações</label>
