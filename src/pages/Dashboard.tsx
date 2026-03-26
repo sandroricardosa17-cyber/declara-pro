@@ -15,13 +15,16 @@ export default function Dashboard() {
   const { data: declarations = [] } = useDeclarations();
   const { data: payments = [] } = usePayments();
 
-  const currentYear = declarations.filter((d) => d.exercise_year === 2025);
+  const currentYear = declarations.filter((d) => d.exercise_year === new Date().getFullYear());
   const pending = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const inProgress = currentYear.filter((d) => ["em_andamento", "em_revisao"].includes(d.status)).length;
   const completed = currentYear.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
-  const totalRevenue = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const received = payments.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
+  // Revenue from declaration fees (all declarations, not just current year)
+  const totalRevenue = declarations.reduce((s, d) => s + Number((d as any).fee || 0), 0);
+  const completedRevenue = declarations
+    .filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status))
+    .reduce((s, d) => s + Number((d as any).fee || 0), 0);
 
   const noDocs = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const pendingPayments = payments.filter((p) => p.status === "pendente").reduce((s, p) => s + Number(p.amount || 0), 0);
