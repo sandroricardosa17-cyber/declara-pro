@@ -1,17 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { useNavigate } from "react-router-dom";
-import { Receipt, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Receipt, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const SSO_PASSWORD = "sso_auto_login_2026";
+const SSO_VALIDATE_URL = "https://xmvspnueewjsdtrhoyrk.supabase.co/functions/v1/validate-sso-token";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const ssoToken = searchParams.get("sso_token");
+    if (ssoToken) {
+      handleSsoLogin(ssoToken);
+    }
+  }, [searchParams]);
+
+  const handleSsoLogin = async (token: string) => {
+    setSsoLoading(true);
+    try {
+      // Validate token
+      const res = await fetch(SSO_VALIDATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+
+      if (!data.valid || !data.email) {
+        throw new Error("Token SSO inválido");
+      }
+
+      const ssoEmail = data.email;
+
+      // Try login first
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: ssoEmail,
+        password: SSO_PASSWORD,
+      });
+
+      if (loginError) {
+        // User doesn't exist, create via edge function
+        const { error: createError } = await supabase.functions.invoke("sso-create-user", {
+          body: { email: ssoEmail, password: SSO_PASSWORD },
+        });
+
+        if (createError) throw createError;
+
+        // Now login
+        const { error: retryError } = await supabase.auth.signInWithPassword({
+          email: ssoEmail,
+          password: SSO_PASSWORD,
+        });
+
+        if (retryError) throw retryError;
+      }
+
+      navigate("/");
+    } catch (error: any) {
+      console.error("SSO login failed:", error);
+      toast({
+        title: "Erro no SSO",
+        description: error.message || "Falha na autenticação via Decole Hub",
+        variant: "destructive",
+      });
+      setSsoLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +95,21 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  if (ssoLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
+            <Receipt className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-lg font-medium">Conectando via Decole Hub...</p>
+          <p className="text-sm text-muted-foreground">Aguarde enquanto validamos sua sessão</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
