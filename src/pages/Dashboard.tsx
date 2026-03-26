@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useClients, useDeclarations, usePayments } from "@/hooks/useData";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import { Link } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RESULT_LABELS: Record<string, { label: string; color: string }> = {
   a_restituir: { label: "A Restituir", color: "text-status-success" },
@@ -14,20 +20,41 @@ export default function Dashboard() {
   const { data: clients = [] } = useClients();
   const { data: declarations = [] } = useDeclarations();
   const { data: payments = [] } = usePayments();
+  const isAdmin = useIsAdmin();
+  const [selectedUserId, setSelectedUserId] = useState<string>("all");
 
-  const currentYear = declarations.filter((d) => d.exercise_year === new Date().getFullYear());
+  // Fetch profiles for admin filter
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("user_id, full_name, email");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin,
+  });
+
+  // Filter declarations by selected user
+  const filteredDeclarations = selectedUserId === "all"
+    ? declarations
+    : declarations.filter((d) => d.user_id === selectedUserId);
+
+  const filteredPayments = selectedUserId === "all"
+    ? payments
+    : payments.filter((p) => p.user_id === selectedUserId);
+
+  const currentYear = filteredDeclarations.filter((d) => d.exercise_year === new Date().getFullYear());
   const pending = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const inProgress = currentYear.filter((d) => ["em_andamento", "em_revisao"].includes(d.status)).length;
   const completed = currentYear.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
-  // Revenue from declaration fees (all declarations, not just current year)
-  const totalRevenue = declarations.reduce((s, d) => s + Number((d as any).fee || 0), 0);
-  const completedRevenue = declarations
+  const totalRevenue = filteredDeclarations.reduce((s, d) => s + Number(d.fee || 0), 0);
+  const completedRevenue = filteredDeclarations
     .filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status))
-    .reduce((s, d) => s + Number((d as any).fee || 0), 0);
+    .reduce((s, d) => s + Number(d.fee || 0), 0);
 
   const noDocs = currentYear.filter((d) => d.status === "aguardando_documentos").length;
-  const pendingPayments = payments.filter((p) => p.status === "pendente").reduce((s, p) => s + Number(p.amount || 0), 0);
+  const pendingPayments = filteredPayments.filter((p) => p.status === "pendente").reduce((s, p) => s + Number(p.amount || 0), 0);
 
   const alerts = [
     ...(noDocs > 0 ? [{ icon: XCircle, message: `${noDocs} declaração(ões) sem documentos`, type: "danger" as const }] : []),
@@ -36,9 +63,26 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do exercício {new Date().getFullYear()}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Visão geral do exercício {new Date().getFullYear()}</p>
+        </div>
+        {isAdmin && (
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Filtrar por usuário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              {profiles.map((p) => (
+                <SelectItem key={p.user_id} value={p.user_id}>
+                  {p.full_name || p.email || "Sem nome"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -60,12 +104,12 @@ export default function Dashboard() {
             <Link to="/declaracoes" className="text-sm text-primary hover:underline">Ver todas</Link>
           </div>
           <div className="divide-y divide-border">
-            {declarations.length === 0 ? (
+            {filteredDeclarations.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-muted-foreground">
                 Nenhuma declaração cadastrada. Comece adicionando clientes e declarações.
               </div>
             ) : (
-              declarations.slice(0, 5).map((dec) => {
+              filteredDeclarations.slice(0, 5).map((dec) => {
                 const clientName = (dec as any).clients?.name || "—";
                 const initials = clientName.split(" ").map((n: string) => n[0]).slice(0, 2).join("");
                 return (
