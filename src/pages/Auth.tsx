@@ -40,7 +40,7 @@ export default function Auth() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
             <Receipt className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold">IRPF Control</h1>
+          <h1 className="mt-4 text-2xl font-bold">IR Control</h1>
           <p className="text-sm text-muted-foreground">Gestão de Declarações de Imposto de Renda</p>
         </div>
 
