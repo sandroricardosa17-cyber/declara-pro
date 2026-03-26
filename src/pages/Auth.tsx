@@ -11,7 +11,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
-  const [searchParams] = useSearchParams();
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
