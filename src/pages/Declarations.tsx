@@ -146,6 +146,19 @@ export default function Declarations() {
     return acc;
   }, {} as Record<string, number>);
 
+  useEffect(() => {
+    const syncWidth = () => {
+      const table = tableScrollRef.current?.querySelector("table");
+      if (table) {
+        setTableScrollWidth((table as HTMLTableElement).scrollWidth);
+      }
+    };
+
+    syncWidth();
+    window.addEventListener("resize", syncWidth);
+    return () => window.removeEventListener("resize", syncWidth);
+  }, [filtered.length, statusFilter, search, isLoading]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
