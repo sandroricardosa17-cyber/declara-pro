@@ -81,6 +81,12 @@ export default function Declarations() {
     collaborator_name: "",
   });
   const [deletingDec, setDeletingDec] = useState<string | null>(null);
+  const [emailingDocs, setEmailingDocs] = useState<string | null>(null);
+  const [emailDocTitles, setEmailDocTitles] = useState<Record<string, string>>({});
+  const [emailDocSelected, setEmailDocSelected] = useState<Record<string, boolean>>({});
+  const [emailUploading, setEmailUploading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const emailFileRef = useRef<HTMLInputElement>(null);
 
   const [editForm, setEditForm] = useState({
     type: "completa",
