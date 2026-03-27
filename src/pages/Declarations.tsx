@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   Search, Plus, AlertTriangle, X, Upload, MessageCircle, Mail,
-  ChevronDown, User, ChevronRight, Eye, Edit2, FileText,
+  ChevronDown, User, ChevronRight, Eye, Edit2, FileText, Trash2,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -80,6 +80,8 @@ export default function Declarations() {
     type: "completa" as "completa" | "simplificada" | "complexa",
     collaborator_name: "",
   });
+  const [deletingDec, setDeletingDec] = useState<string | null>(null);
+
   const [editForm, setEditForm] = useState({
     type: "completa",
     fee: 0,
@@ -521,6 +523,9 @@ export default function Declarations() {
                           <button onClick={() => sendGuide("email", dec)} title="Enviar guia por E-mail" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info">
                             <Mail className="h-4 w-4" />
                           </button>
+                          <button onClick={() => setDeletingDec(dec.id)} title="Excluir declaração" className="rounded-md p-1.5 hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -563,6 +568,41 @@ export default function Declarations() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingDec && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
+            <h2 className="text-lg font-semibold mb-2">Excluir Declaração</h2>
+            <p className="text-sm text-muted-foreground mb-6">Tem certeza que deseja excluir esta declaração? Esta ação não pode ser desfeita. Todos os documentos, pagamentos e tarefas vinculados também serão removidos.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeletingDec(null)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+              <button
+                onClick={async () => {
+                  // Delete related records first
+                  await supabase.from("documents").delete().eq("declaration_id", deletingDec);
+                  await supabase.from("payments").delete().eq("declaration_id", deletingDec);
+                  await supabase.from("tasks").delete().eq("declaration_id", deletingDec);
+                  const { error } = await supabase.from("declarations").delete().eq("id", deletingDec);
+                  if (error) {
+                    toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "Declaração excluída!" });
+                    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+                    queryClient.invalidateQueries({ queryKey: ["payments"] });
+                    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                    queryClient.invalidateQueries({ queryKey: ["documents"] });
+                  }
+                  setDeletingDec(null);
+                }}
+                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
+              >
+                Excluir
+              </button>
+            </div>
           </div>
         </div>
       )}
