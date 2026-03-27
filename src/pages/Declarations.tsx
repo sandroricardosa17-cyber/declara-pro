@@ -89,6 +89,7 @@ export default function Declarations() {
   const emailFileRef = useRef<HTMLInputElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
 
   const [editForm, setEditForm] = useState({
     type: "completa",
@@ -144,6 +145,19 @@ export default function Declarations() {
     acc[d.status] = (acc[d.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  useEffect(() => {
+    const syncWidth = () => {
+      const table = tableScrollRef.current?.querySelector("table");
+      if (table) {
+        setTableScrollWidth((table as HTMLTableElement).scrollWidth);
+      }
+    };
+
+    syncWidth();
+    window.addEventListener("resize", syncWidth);
+    return () => window.removeEventListener("resize", syncWidth);
+  }, [filtered.length, statusFilter, search, isLoading]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -412,7 +426,6 @@ export default function Declarations() {
           </div>
         ) : (
           <>
-            {/* Top scrollbar */}
             <div
               ref={topScrollRef}
               className="overflow-x-auto scrollbar-thin border-b border-border"
@@ -423,7 +436,7 @@ export default function Declarations() {
                 }
               }}
             >
-              <div style={{ width: '1200px', height: '1px', pointerEvents: 'none' }}>&nbsp;</div>
+              <div style={{ width: `${Math.max(tableScrollWidth, 1200)}px`, height: '1px', pointerEvents: 'none' }}>&nbsp;</div>
             </div>
             <div
               ref={tableScrollRef}
@@ -434,7 +447,7 @@ export default function Declarations() {
                 }
               }}
             >
-            <table className="min-w-[1200px] w-full text-sm border-collapse">
+            <table className="min-w-[1200px] w-max text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground sticky left-0 bg-muted/50 z-10 min-w-[180px] shadow-[2px_0_8px_-2px_rgba(0,0,0,0.08)]">Cliente</th>
