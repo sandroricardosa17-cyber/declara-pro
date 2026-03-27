@@ -117,6 +117,20 @@ export default function Declarations() {
     enabled: !!viewingDocs,
   });
 
+  const { data: emailDocs = [], refetch: refetchEmailDocs } = useQuery({
+    queryKey: ["documents", "email", emailingDocs],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("declaration_id", emailingDocs!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!emailingDocs,
+  });
+
   const filtered = declarations.filter((d) => {
     const clientName = (d as any).clients?.name || "";
     const matchSearch = clientName.toLowerCase().includes(search.toLowerCase());
