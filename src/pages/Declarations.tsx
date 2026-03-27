@@ -409,7 +409,29 @@ export default function Declarations() {
             {declarations.length === 0 ? "Nenhuma declaração. Crie a primeira!" : "Nenhum resultado para este filtro."}
           </div>
         ) : (
-          <div className="overflow-x-auto scrollbar-thin" style={{ scrollbarColor: 'hsl(var(--border)) transparent' }}>
+          <>
+            {/* Top scrollbar */}
+            <div
+              ref={topScrollRef}
+              className="overflow-x-auto scrollbar-thin"
+              style={{ scrollbarColor: 'hsl(var(--border)) transparent' }}
+              onScroll={() => {
+                if (tableScrollRef.current && topScrollRef.current) {
+                  tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+                }
+              }}
+            >
+              <div style={{ width: '1200px', height: '1px' }} />
+            </div>
+            <div
+              ref={tableScrollRef}
+              className="overflow-x-auto scrollbar-none"
+              onScroll={() => {
+                if (topScrollRef.current && tableScrollRef.current) {
+                  topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+                }
+              }}
+            >
             <table className="min-w-[1200px] w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
