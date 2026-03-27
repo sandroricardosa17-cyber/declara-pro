@@ -119,7 +119,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "DeclaraPro <onboarding@resend.dev>",
+          from: "IR Control <noreply@ircontrol.pro>",
           to: [client.email],
           subject,
           html: htmlBody,
