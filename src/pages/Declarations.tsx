@@ -89,6 +89,7 @@ export default function Declarations() {
   const emailFileRef = useRef<HTMLInputElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
 
   const [editForm, setEditForm] = useState({
     type: "completa",
