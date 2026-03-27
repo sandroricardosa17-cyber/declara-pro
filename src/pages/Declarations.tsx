@@ -703,6 +703,165 @@ export default function Declarations() {
           </div>
         </div>
       )}
+
+      {/* Email Documents Modal */}
+      {emailingDocs && (() => {
+        const dec = declarations.find((d) => d.id === emailingDocs);
+        const client = dec ? clients.find((c) => c.id === dec.client_id) : null;
+        const selectedDocs = emailDocs.filter((d) => emailDocSelected[d.id]);
+
+        const handleEmailUpload = async (files: FileList | null) => {
+          if (!files || !user || !dec) return;
+          setEmailUploading(true);
+          for (const file of Array.from(files)) {
+            const path = `${user.id}/${emailingDocs}/${Date.now()}_${file.name}`;
+            const { error: uploadErr } = await supabase.storage.from("irpf-documents").upload(path, file);
+            if (uploadErr) {
+              toast({ title: "Erro no upload", description: uploadErr.message, variant: "destructive" });
+              continue;
+            }
+            await supabase.from("documents").insert({
+              user_id: user.id,
+              declaration_id: emailingDocs,
+              client_id: dec.client_id,
+              file_name: file.name,
+              file_path: path,
+              file_type: file.type,
+              category: "outros",
+            });
+          }
+          await refetchEmailDocs();
+          setEmailUploading(false);
+          toast({ title: "Documentos enviados!" });
+        };
+
+        const handleSendDocsEmail = async () => {
+          if (!client?.email) {
+            toast({ title: "Cliente sem e-mail cadastrado", variant: "destructive" });
+            return;
+          }
+          if (selectedDocs.length === 0) {
+            toast({ title: "Selecione ao menos um documento", variant: "destructive" });
+            return;
+          }
+          setEmailSending(true);
+          try {
+            const docsPayload = selectedDocs.map((d) => ({
+              file_path: d.file_path,
+              file_name: d.file_name,
+              title: emailDocTitles[d.id] || d.file_name,
+            }));
+            const { data, error } = await supabase.functions.invoke("send-documents-email", {
+              body: {
+                client_email: client.email,
+                client_name: client.name,
+                documents: docsPayload,
+                declaration_year: dec ? `${dec.year_base}/${dec.exercise_year}` : "",
+              },
+            });
+            if (error) throw error;
+            toast({ title: "E-mail enviado!", description: `${selectedDocs.length} documento(s) enviado(s) para ${client.email}` });
+            setEmailingDocs(null);
+          } catch (err: any) {
+            toast({ title: "Erro ao enviar e-mail", description: err.message, variant: "destructive" });
+          } finally {
+            setEmailSending(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Enviar Documentos por E-mail</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Cliente: <strong>{client?.name || "—"}</strong> · {client?.email || "Sem e-mail"}
+                  </p>
+                </div>
+                <button onClick={() => setEmailingDocs(null)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+              </div>
+
+              {/* Upload new documents */}
+              <div className="mb-4">
+                <input
+                  ref={emailFileRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                  onChange={(e) => handleEmailUpload(e.target.files)}
+                />
+                <button
+                  onClick={() => emailFileRef.current?.click()}
+                  disabled={emailUploading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-dashed border-input px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full justify-center"
+                >
+                  <Upload className="h-4 w-4" />
+                  {emailUploading ? "Enviando..." : "Anexar novos documentos"}
+                </button>
+              </div>
+
+              {/* Document list with titles */}
+              {emailDocs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum documento. Anexe documentos acima.</p>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium">{emailDocs.length} documento(s)</p>
+                    <button
+                      onClick={() => {
+                        const allSelected = emailDocs.every((d) => emailDocSelected[d.id]);
+                        const newSelected: Record<string, boolean> = {};
+                        emailDocs.forEach((d) => { newSelected[d.id] = !allSelected; });
+                        setEmailDocSelected(newSelected);
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {emailDocs.every((d) => emailDocSelected[d.id]) ? "Desmarcar todos" : "Selecionar todos"}
+                    </button>
+                  </div>
+                  {emailDocs.map((doc) => (
+                    <div key={doc.id} className={`rounded-lg border p-3 transition-colors ${emailDocSelected[doc.id] ? "border-primary bg-primary/5" : "border-border"}`}>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={!!emailDocSelected[doc.id]}
+                          onChange={(e) => setEmailDocSelected({ ...emailDocSelected, [doc.id]: e.target.checked })}
+                          className="mt-1 rounded"
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <p className="text-xs text-muted-foreground">{doc.file_name}</p>
+                          <input
+                            type="text"
+                            placeholder="Título do documento (ex: Informe de Rendimentos)"
+                            value={emailDocTitles[doc.id] || ""}
+                            onChange={(e) => setEmailDocTitles({ ...emailDocTitles, [doc.id]: e.target.value })}
+                            className="h-8 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Send button */}
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <button onClick={() => setEmailingDocs(null)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+                <button
+                  onClick={handleSendDocsEmail}
+                  disabled={emailSending || selectedDocs.length === 0}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  <Mail className="h-4 w-4" />
+                  {emailSending ? "Enviando..." : `Enviar ${selectedDocs.length} doc(s) por e-mail`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
