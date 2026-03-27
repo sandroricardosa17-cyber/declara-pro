@@ -540,7 +540,11 @@ export default function Declarations() {
                           <button onClick={() => sendGuide("whatsapp", dec)} title="Enviar guia por WhatsApp" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-success">
                             <MessageCircle className="h-4 w-4" />
                           </button>
-                          <button onClick={() => sendGuide("email", dec)} title="Enviar guia por E-mail" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info">
+                          <button onClick={() => {
+                            setEmailingDocs(dec.id);
+                            setEmailDocTitles({});
+                            setEmailDocSelected({});
+                          }} title="Enviar documentos por E-mail" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-status-info">
                             <Mail className="h-4 w-4" />
                           </button>
                           <button onClick={() => setDeletingDec(dec.id)} title="Excluir declaração" className="rounded-md p-1.5 hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
