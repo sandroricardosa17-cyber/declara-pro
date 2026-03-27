@@ -87,6 +87,8 @@ export default function Declarations() {
   const [emailUploading, setEmailUploading] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const emailFileRef = useRef<HTMLInputElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const [editForm, setEditForm] = useState({
     type: "completa",
@@ -580,6 +582,7 @@ export default function Declarations() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
