@@ -53,7 +53,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "IR Control <noreply@ircontrol.pro>",
+        from: "IR Control <noreply@irpfcontrol.pro>",
         to: [to_email],
         subject,
         html: htmlBody,
