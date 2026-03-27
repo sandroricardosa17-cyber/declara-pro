@@ -410,19 +410,19 @@ export default function Declarations() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ano</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tipo</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Honorário</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Avançar</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Resultado</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Comissão</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ações</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground sticky left-0 bg-muted/50 z-10 min-w-[180px] shadow-[2px_0_8px_-2px_rgba(0,0,0,0.08)]">Cliente</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Ano</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Tipo</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Honorário</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Avançar</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Resultado</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Colaborador</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Comissão</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -435,18 +435,18 @@ export default function Declarations() {
                   const nextAction = NEXT_STATUS[dec.status];
                   return (
                     <tr key={dec.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 sticky left-0 bg-card z-10 shadow-[2px_0_8px_-2px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center gap-2.5">
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">{initials}</div>
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground flex-shrink-0">{initials}</div>
                           <div>
-                            <p className="font-medium">{clientName}</p>
+                            <p className="font-medium whitespace-nowrap">{clientName}</p>
                             {dec.malha_fina && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-status-danger"><AlertTriangle className="h-3 w-3" /> Malha Fina</span>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-muted-foreground">{dec.year_base}/{dec.exercise_year}</td>
-                      <td className="px-4 py-3.5 text-xs font-medium">{TYPE_LABELS[dec.type] || dec.type}</td>
-                      <td className="px-4 py-3.5 font-medium">R$ {fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">{dec.year_base}/{dec.exercise_year}</td>
+                      <td className="px-4 py-3.5 text-xs font-medium whitespace-nowrap">{TYPE_LABELS[dec.type] || dec.type}</td>
+                      <td className="px-4 py-3.5 font-medium whitespace-nowrap">R$ {fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
 
                       {/* Editable Status */}
                       <td className="px-4 py-3.5">
@@ -479,7 +479,7 @@ export default function Declarations() {
                         {nextAction ? (
                           <button
                             onClick={() => handleAdvanceStatus(dec)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors whitespace-nowrap"
                           >
                             {nextAction.label}
                             <ChevronRight className="h-3 w-3" />
@@ -493,7 +493,7 @@ export default function Declarations() {
                         {dec.result ? (
                           <div>
                             <span className={`text-xs font-medium ${RESULT_LABELS[dec.result]?.color || ""}`}>{RESULT_LABELS[dec.result]?.label}</span>
-                            {dec.result_value && <p className="text-xs text-muted-foreground">R$ {Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>}
+                            {dec.result_value && <p className="text-xs text-muted-foreground whitespace-nowrap">R$ {Number(dec.result_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>}
                             {dec.result === "a_pagar" && (dec as any).tax_installments && (
                               <p className="text-[10px] text-muted-foreground">{(dec as any).tax_installments}x parcela(s)</p>
                             )}
@@ -515,7 +515,7 @@ export default function Declarations() {
                         ) : (
                           <button
                             onClick={() => setEditingCollaborator(dec.id)}
-                            className="group flex items-center gap-1 text-xs"
+                            className="group flex items-center gap-1 text-xs whitespace-nowrap"
                             title="Clique para alterar o colaborador"
                           >
                             <User className="h-3 w-3 text-muted-foreground" />
@@ -525,7 +525,7 @@ export default function Declarations() {
                         )}
                       </td>
 
-                      <td className="px-4 py-3.5 text-xs font-medium text-primary">R$ {commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3.5 text-xs font-medium text-primary whitespace-nowrap">R$ {commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">
                           <button onClick={() => openEditModal(dec)} title="Editar declaração" className="rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
