@@ -415,15 +415,15 @@ export default function Declarations() {
             {/* Top scrollbar */}
             <div
               ref={topScrollRef}
-              className="overflow-x-auto scrollbar-thin"
-              style={{ scrollbarColor: 'hsl(var(--border)) transparent' }}
+              className="overflow-x-auto scrollbar-thin border-b border-border"
+              style={{ scrollbarColor: 'hsl(var(--border)) transparent', marginBottom: '-1px' }}
               onScroll={() => {
                 if (tableScrollRef.current && topScrollRef.current) {
                   tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
                 }
               }}
             >
-              <div style={{ width: '1200px', height: '1px' }} />
+              <div style={{ width: '1200px', height: '1px', pointerEvents: 'none' }}>&nbsp;</div>
             </div>
             <div
               ref={tableScrollRef}
