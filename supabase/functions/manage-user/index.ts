@@ -85,9 +85,9 @@ Deno.serve(async (req) => {
 
       // Update role if provided
       if (role) {
-        await adminClient
-          .from("user_roles")
-          .upsert({ user_id, role }, { onConflict: "user_id" });
+        // Delete existing roles for user, then insert new one
+        await adminClient.from("user_roles").delete().eq("user_id", user_id);
+        await adminClient.from("user_roles").insert({ user_id, role });
       }
 
       return new Response(JSON.stringify({ success: true }), {
