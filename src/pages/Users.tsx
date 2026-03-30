@@ -3,8 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Mail, Lock, User, Shield, X } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Shield, X, Pencil, Trash2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface Profile {
   id: string;
@@ -29,10 +36,23 @@ export default function Users() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Create form
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "funcionario">("funcionario");
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState<Profile | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "funcionario">("funcionario");
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteProfile, setDeleteProfile] = useState<Profile | null>(null);
 
   const fetchData = async () => {
     const [{ data: profilesData }, { data: rolesData }] = await Promise.all([
@@ -51,15 +71,20 @@ export default function Users() {
     return <Navigate to="/" replace />;
   }
 
-  const getRoleLabel = (userId: string) => {
+  const getUserRole = (userId: string) => {
     const userRole = roles.find((r) => r.user_id === userId);
-    if (!userRole) return "Usuário";
-    return userRole.role === "admin" ? "Administrador" : "Funcionário";
+    return userRole?.role as "admin" | "funcionario" | undefined;
+  };
+
+  const getRoleLabel = (userId: string) => {
+    const r = getUserRole(userId);
+    if (!r) return "Usuário";
+    return r === "admin" ? "Administrador" : "Funcionário";
   };
 
   const getRoleBadgeClass = (userId: string) => {
-    const userRole = roles.find((r) => r.user_id === userId);
-    if (!userRole || userRole.role !== "admin") return "bg-muted text-muted-foreground";
+    const r = getUserRole(userId);
+    if (!r || r !== "admin") return "bg-muted text-muted-foreground";
     return "bg-primary/10 text-primary";
   };
 
@@ -70,19 +95,69 @@ export default function Users() {
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: { email, password, full_name: fullName, role },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       toast({ title: "Usuário criado com sucesso!" });
       setShowForm(false);
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setRole("funcionario");
+      setFullName(""); setEmail(""); setPassword(""); setRole("funcionario");
       fetchData();
     } catch (error: any) {
       toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEdit = (profile: Profile) => {
+    setEditProfile(profile);
+    setEditFullName(profile.full_name);
+    setEditEmail(profile.email || "");
+    setEditPhone(profile.phone || "");
+    setEditRole(getUserRole(profile.user_id) || "funcionario");
+    setEditOpen(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProfile) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "update",
+          user_id: editProfile.user_id,
+          full_name: editFullName,
+          email: editEmail,
+          phone: editPhone,
+          role: editRole,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Usuário atualizado com sucesso!" });
+      setEditOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar usuário", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteProfile) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: { action: "delete", user_id: deleteProfile.user_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Usuário excluído com sucesso!" });
+      setDeleteOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Erro ao excluir usuário", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -104,6 +179,7 @@ export default function Users() {
         </button>
       </div>
 
+      {/* Create Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
@@ -113,7 +189,6 @@ export default function Users() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Nome completo</label>
@@ -154,6 +229,75 @@ export default function Users() {
         </div>
       )}
 
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>Atualize os dados do usuário</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Nome completo</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} required className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">E-mail</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} required className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Telefone</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="(00) 00000-0000" className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Função</label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value as "admin" | "funcionario")} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none">
+                  <option value="funcionario">Funcionário</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" disabled={loading} className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              {loading ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário <strong>{deleteProfile?.full_name}</strong>? Esta ação não pode ser desfeita e removerá todos os dados associados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={loading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loading ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Table */}
       <div className="rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -163,6 +307,7 @@ export default function Users() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">E-mail</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Função</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Criado em</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -178,11 +323,29 @@ export default function Users() {
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {new Date(profile.created_at).toLocaleDateString("pt-BR")}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(profile)}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => { setDeleteProfile(profile); setDeleteOpen(true); }}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {profiles.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     Nenhum usuário cadastrado
                   </td>
                 </tr>
