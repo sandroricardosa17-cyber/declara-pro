@@ -362,6 +362,7 @@ export type Database = {
         | "enviada"
         | "em_processamento"
         | "processada"
+        | "em_malha_fina"
       declaration_type: "completa" | "simplificada" | "complexa"
       document_category:
         | "comprovantes_rendimentos"
@@ -510,6 +511,7 @@ export const Constants = {
         "enviada",
         "em_processamento",
         "processada",
+        "em_malha_fina",
       ],
       declaration_type: ["completa", "simplificada", "complexa"],
       document_category: [

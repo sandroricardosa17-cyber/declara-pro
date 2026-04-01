@@ -5,7 +5,8 @@ export type DeclarationStatus =
   | "finalizada"
   | "enviada"
   | "em_processamento"
-  | "processada";
+  | "processada"
+  | "em_malha_fina";
 
 export type DeclarationType = "completa" | "simplificada" | "complexa";
 
@@ -67,6 +68,7 @@ export const STATUS_CONFIG: Record<DeclarationStatus, { label: string; color: st
   enviada: { label: "Enviada", color: "bg-primary/10 text-primary" },
   em_processamento: { label: "Em Processamento", color: "bg-status-info/10 text-status-info" },
   processada: { label: "Processada", color: "bg-status-success/10 text-status-success" },
+  em_malha_fina: { label: "Em Malha Fina", color: "bg-status-danger/10 text-status-danger" },
 };
 
 export const RESULT_CONFIG: Record<DeclarationResult, { label: string; color: string }> = {
