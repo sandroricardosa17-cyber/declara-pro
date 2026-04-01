@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useNavigate } from "react-router-dom";
 import { Receipt, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -65,13 +64,23 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const form = e.currentTarget as HTMLFormElement;
+      const formData = new FormData(form);
+      const submittedEmail = String(formData.get("email") ?? email).trim().toLowerCase();
+      const submittedPassword = String(formData.get("password") ?? password);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: submittedEmail,
+        password: submittedPassword,
+      });
       if (error) throw error;
       navigate("/");
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error.message === "Invalid login credentials"
+          ? "E-mail ou senha inválidos."
+          : error.message,
         variant: "destructive",
       });
     } finally {
@@ -119,11 +128,13 @@ export default function Auth() {
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
+                  autoComplete="username"
                   className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -134,12 +145,14 @@ export default function Auth() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  autoComplete="current-password"
                   className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <button

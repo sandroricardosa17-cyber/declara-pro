@@ -2,8 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useUserRole";
 import {
-  LayoutDashboard, Users, FileText, DollarSign, ClipboardList,
-  Bell, Settings, LogOut, Receipt, BarChart3, UserPlus,
+  LayoutDashboard, Users, FileText, DollarSign,
+  Bell, LogOut, Receipt, BarChart3, UserPlus,
 } from "lucide-react";
 
 export default function AppSidebar() {
@@ -17,7 +17,6 @@ export default function AppSidebar() {
     { label: "Declarações", icon: FileText, path: "/declaracoes" },
     { label: "Financeiro", icon: DollarSign, path: "/financeiro" },
     { label: "Relatórios", icon: BarChart3, path: "/relatorios" },
-    { label: "Tarefas", icon: ClipboardList, path: "/tarefas" },
     { label: "Notificações", icon: Bell, path: "/notificacoes" },
     ...(isAdmin ? [{ label: "Usuários", icon: UserPlus, path: "/usuarios" }] : []),
   ];
@@ -55,13 +54,6 @@ export default function AppSidebar() {
       </nav>
 
       <div className="border-t border-sidebar-border p-3 space-y-1">
-        <Link
-          to="/configuracoes"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-        >
-          <Settings className="h-4.5 w-4.5" />
-          Configurações
-        </Link>
         <button
           onClick={signOut}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
