@@ -111,7 +111,7 @@ export default function Reports() {
           <div class="metric"><div class="metric-title">Total Declarações</div><div class="metric-value">${total}</div></div>
           <div class="metric"><div class="metric-title">Em Malha Fina</div><div class="metric-value text-danger">${malhaFina}</div></div>
           <div class="metric"><div class="metric-title">Pendentes</div><div class="metric-value">${pendentes}</div></div>
-          <div class="metric"><div class="metric-title">Finalizadas</div><div class="metric-value text-success">${finalizadas}</div></div>
+          <div class="metric"><div class="metric-title">Processadas</div><div class="metric-value text-success">${finalizadas}</div></div>
         </div>
 
         <div class="metrics">
@@ -209,7 +209,7 @@ export default function Reports() {
           <MetricCard title="Total Declarações" value={total} icon={FileText} />
           <MetricCard title="Em Malha Fina" value={malhaFina} icon={AlertTriangle} variant="danger" />
           <MetricCard title="Pendentes" value={pendentes} icon={Clock} variant="warning" />
-          <MetricCard title="Finalizadas" value={finalizadas} icon={CheckCircle} variant="primary" />
+          <MetricCard title="Processadas" value={finalizadas} icon={CheckCircle} variant="primary" />
         </div>
 
         {/* Financial summary */}
