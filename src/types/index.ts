@@ -65,7 +65,7 @@ export const STATUS_CONFIG: Record<DeclarationStatus, { label: string; color: st
   em_andamento: { label: "Em Andamento", color: "bg-status-warning/10 text-status-warning" },
   em_revisao: { label: "Em Revisão", color: "bg-status-info/10 text-status-info" },
   finalizada: { label: "Finalizada", color: "bg-status-success/10 text-status-success" },
-  enviada: { label: "Enviada", color: "bg-primary/10 text-primary" },
+  enviada: { label: "Transmitida", color: "bg-primary/10 text-primary" },
   em_processamento: { label: "Em Processamento", color: "bg-status-info/10 text-status-info" },
   processada: { label: "Processada", color: "bg-status-success/10 text-status-success" },
   em_malha_fina: { label: "Em Malha Fina", color: "bg-status-danger/10 text-status-danger" },
