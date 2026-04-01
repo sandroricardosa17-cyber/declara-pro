@@ -40,6 +40,7 @@ const STATUS_OPTIONS: { value: DeclarationStatus; label: string }[] = [
   { value: "enviada", label: "Enviada" },
   { value: "em_processamento", label: "Em Processamento" },
   { value: "processada", label: "Processada" },
+  { value: "em_malha_fina", label: "Em Malha Fina" },
 ];
 
 const NEXT_STATUS: Record<string, { next: DeclarationStatus; label: string }> = {
@@ -49,6 +50,7 @@ const NEXT_STATUS: Record<string, { next: DeclarationStatus; label: string }> = 
   finalizada: { next: "enviada", label: "Enviar" },
   enviada: { next: "em_processamento", label: "Em Processamento" },
   em_processamento: { next: "processada", label: "Processada" },
+  processada: { next: "em_malha_fina", label: "Malha Fina" },
 };
 
 const statusFilters: { value: DeclarationStatus | "all"; label: string }[] = [

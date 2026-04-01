@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, AlertTriangle, Clock, CheckCircle, XCircle, ShieldAlert, X } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useClients, useDeclarations, usePayments } from "@/hooks/useData";
@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
+import { STATUS_CONFIG, type DeclarationStatus } from "@/types";
 
 const RESULT_LABELS: Record<string, { label: string; color: string }> = {
   a_restituir: { label: "A Restituir", color: "text-status-success" },
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const { data: payments = [] } = usePayments();
   const isAdmin = useIsAdmin();
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
+  const [drilldownStatus, setDrilldownStatus] = useState<string | null>(null);
 
   // Fetch profiles for admin filter
   const { data: profiles = [] } = useQuery({
@@ -47,6 +50,26 @@ export default function Dashboard() {
   const pending = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const inProgress = currentYear.filter((d) => ["em_andamento", "em_revisao"].includes(d.status)).length;
   const completed = currentYear.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
+  const malhaFina = currentYear.filter((d) => d.status === "em_malha_fina").length;
+
+  const getDrilldownDeclarations = () => {
+    if (!drilldownStatus) return [];
+    const statusMap: Record<string, string[]> = {
+      pending: ["aguardando_documentos"],
+      inProgress: ["em_andamento", "em_revisao"],
+      completed: ["finalizada", "enviada", "em_processamento", "processada"],
+      malhaFina: ["em_malha_fina"],
+    };
+    const statuses = statusMap[drilldownStatus] || [];
+    return currentYear.filter((d) => statuses.includes(d.status));
+  };
+
+  const drilldownLabels: Record<string, string> = {
+    pending: "Declarações Pendentes",
+    inProgress: "Declarações Em Andamento",
+    completed: "Declarações Processadas",
+    malhaFina: "Declarações Em Malha Fina",
+  };
 
   const totalRevenue = filteredDeclarations.reduce((s, d) => s + Number(d.fee || 0), 0);
   const completedRevenue = filteredDeclarations
@@ -86,16 +109,65 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Declarações Pendentes" value={pending} icon={AlertTriangle} variant="danger" />
-        <MetricCard title="Em Andamento" value={inProgress} icon={Clock} variant="warning" />
-        <MetricCard title="Finalizadas" value={completed} icon={CheckCircle} variant="primary" />
+        <div className="cursor-pointer" onClick={() => setDrilldownStatus(drilldownStatus === "pending" ? null : "pending")}>
+          <MetricCard title="Declarações Pendentes" value={pending} icon={AlertTriangle} variant="danger" />
+        </div>
+        <div className="cursor-pointer" onClick={() => setDrilldownStatus(drilldownStatus === "inProgress" ? null : "inProgress")}>
+          <MetricCard title="Em Andamento" value={inProgress} icon={Clock} variant="warning" />
+        </div>
+        <div className="cursor-pointer" onClick={() => setDrilldownStatus(drilldownStatus === "completed" ? null : "completed")}>
+          <MetricCard title="Processadas" value={completed} icon={CheckCircle} variant="primary" />
+        </div>
+        <div className="cursor-pointer" onClick={() => setDrilldownStatus(drilldownStatus === "malhaFina" ? null : "malhaFina")}>
+          <MetricCard title="Em Malha Fina" value={malhaFina} icon={ShieldAlert} variant="danger" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="sm:col-span-2 lg:col-span-4">
         <MetricCard
           title="Total Faturado"
           value={`R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           subtitle={`R$ ${completedRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} concluído`}
           icon={DollarSign}
         />
+        </div>
       </div>
+
+      {drilldownStatus && (
+        <div className="rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="font-semibold">{drilldownLabels[drilldownStatus]}</h2>
+            <button onClick={() => setDrilldownStatus(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-border">
+            {getDrilldownDeclarations().length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted-foreground">Nenhuma declaração neste status.</div>
+            ) : (
+              getDrilldownDeclarations().map((dec) => {
+                const clientName = (dec as any).clients?.name || "—";
+                const initials = clientName.split(" ").map((n: string) => n[0]).slice(0, 2).join("");
+                return (
+                  <div key={dec.id} className="flex items-center justify-between px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                        {initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{clientName}</p>
+                        <p className="text-xs text-muted-foreground">IRPF {dec.year_base}/{dec.exercise_year} · {dec.type === "completa" ? "Completa" : dec.type === "complexa" ? "Complexa" : "Simplificada"}</p>
+                      </div>
+                    </div>
+                    <StatusBadge status={dec.status as DeclarationStatus} />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-xl border border-border bg-card">
