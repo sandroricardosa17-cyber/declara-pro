@@ -21,7 +21,7 @@ export default function Reports() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const total = declarations.length;
-  const malhaFina = declarations.filter((d) => d.malha_fina).length;
+  const malhaFina = declarations.filter((d) => d.status === "em_malha_fina" || d.malha_fina).length;
   const pendentes = declarations.filter((d) => ["aguardando_documentos", "em_andamento", "em_revisao"].includes(d.status)).length;
   const finalizadas = declarations.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
@@ -29,8 +29,12 @@ export default function Reports() {
   const totalCommission = totalFee * 0.1;
 
   const totalPaid = payments.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
-  const totalPending = payments.filter((p) => p.status !== "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
-  const pendingCount = payments.filter((p) => p.status !== "pago").length;
+  const totalPending = Math.max(totalFee - totalPaid, 0);
+  const pendingCount = declarations.filter((d) => {
+    const fee = Number((d as any).fee || 0);
+    const paid = payments.filter((p) => p.declaration_id === d.id && p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
+    return paid < fee;
+  }).length;
 
   const restituir = declarations.filter((d) => d.result === "a_restituir");
   const aPagar = declarations.filter((d) => d.result === "a_pagar");
@@ -107,7 +111,7 @@ export default function Reports() {
           <div class="metric"><div class="metric-title">Total Declarações</div><div class="metric-value">${total}</div></div>
           <div class="metric"><div class="metric-title">Em Malha Fina</div><div class="metric-value text-danger">${malhaFina}</div></div>
           <div class="metric"><div class="metric-title">Pendentes</div><div class="metric-value">${pendentes}</div></div>
-          <div class="metric"><div class="metric-title">Finalizadas</div><div class="metric-value text-success">${finalizadas}</div></div>
+          <div class="metric"><div class="metric-title">Processadas</div><div class="metric-value text-success">${finalizadas}</div></div>
         </div>
 
         <div class="metrics">
@@ -205,7 +209,7 @@ export default function Reports() {
           <MetricCard title="Total Declarações" value={total} icon={FileText} />
           <MetricCard title="Em Malha Fina" value={malhaFina} icon={AlertTriangle} variant="danger" />
           <MetricCard title="Pendentes" value={pendentes} icon={Clock} variant="warning" />
-          <MetricCard title="Finalizadas" value={finalizadas} icon={CheckCircle} variant="primary" />
+          <MetricCard title="Processadas" value={finalizadas} icon={CheckCircle} variant="primary" />
         </div>
 
         {/* Financial summary */}
