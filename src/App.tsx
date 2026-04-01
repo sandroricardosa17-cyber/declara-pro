@@ -9,7 +9,6 @@ import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Declarations from "@/pages/Declarations";
 import Financial from "@/pages/Financial";
-import Tasks from "@/pages/Tasks";
 import Notifications from "@/pages/Notifications";
 import Reports from "@/pages/Reports";
 import Auth from "@/pages/Auth";
@@ -35,13 +34,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+    <Route path="/tarefas" element={<Navigate to="/" replace />} />
+    <Route path="/configuracoes" element={<Navigate to="/" replace />} />
     <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/" element={<Dashboard />} />
       <Route path="/clientes" element={<Clients />} />
       <Route path="/declaracoes" element={<Declarations />} />
       <Route path="/financeiro" element={<Financial />} />
       <Route path="/relatorios" element={<Reports />} />
-      <Route path="/tarefas" element={<Tasks />} />
       <Route path="/notificacoes" element={<Notifications />} />
       <Route path="/usuarios" element={<Users />} />
     </Route>
