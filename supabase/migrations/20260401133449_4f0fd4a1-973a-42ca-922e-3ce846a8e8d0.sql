@@ -1,0 +1,1 @@
+ALTER TYPE public.declaration_status ADD VALUE IF NOT EXISTS 'em_malha_fina' AFTER 'processada';
