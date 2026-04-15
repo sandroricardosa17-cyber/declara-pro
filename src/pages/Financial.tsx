@@ -38,9 +38,9 @@ export default function Financial() {
   const isLoading = loadingDec || loadingPay;
 
   const [editingPaid, setEditingPaid] = useState<string | null>(null);
-  const [editingRemaining, setEditingRemaining] = useState<string | null>(null);
+  
   const [paidValue, setPaidValue] = useState("");
-  const [remainingValue, setRemainingValue] = useState("");
+  
 
   const totalFee = declarations.reduce((s, d) => s + Number(d.fee || 0), 0);
   const received = payments
@@ -181,40 +181,8 @@ export default function Financial() {
     queryClient.invalidateQueries({ queryKey: ["payments"] });
   };
 
-  const handleSaveRemaining = async (row: typeof rows[0]) => {
-    if (!user) return;
-    const val = parseFloat(remainingValue.replace(",", "."));
-    if (isNaN(val) || val < 0) {
-      toast({ title: "Valor inválido", variant: "destructive" });
-      setEditingRemaining(null);
-      return;
-    }
-    const newPaid = Math.max(row.fee - val, 0);
-    const newStatus = newPaid >= row.fee && row.fee > 0 ? "pago" : newPaid > 0 ? "parcial" : "pendente";
 
-    if (row.lastPaymentId) {
-      const { error } = await supabase
-        .from("payments")
-        .update({ amount: newPaid, status: newStatus, paid_at: newStatus === "pago" ? new Date().toISOString() : null } as any)
-        .eq("id", row.lastPaymentId);
-      if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
-      }
-    } else {
-      const { error } = await supabase.from("payments").insert({
-        user_id: user.id,
-        declaration_id: row.id,
-        amount: newPaid,
-        status: newStatus,
-        paid_at: newStatus === "pago" ? new Date().toISOString() : null,
-      } as any);
-      if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
-      }
-    }
-    setEditingRemaining(null);
-    queryClient.invalidateQueries({ queryKey: ["payments"] });
-  };
+
 
   return (
     <div className="space-y-6">
@@ -288,30 +256,8 @@ export default function Financial() {
                         </button>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      {editingRemaining === r.id ? (
-                        <Input
-                          autoFocus
-                          className="h-7 w-28 text-xs"
-                          defaultValue={r.remaining.toFixed(2).replace(".", ",")}
-                          onBlur={(e) => { setRemainingValue(e.target.value); handleSaveRemaining(r); }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              setRemainingValue((e.target as HTMLInputElement).value);
-                              setTimeout(() => handleSaveRemaining(r), 0);
-                            }
-                            if (e.key === "Escape") setEditingRemaining(null);
-                          }}
-                          onChange={(e) => setRemainingValue(e.target.value)}
-                        />
-                      ) : (
-                        <button
-                          className="font-medium text-status-danger hover:underline cursor-pointer"
-                          onClick={() => { setEditingRemaining(r.id); setRemainingValue(r.remaining.toFixed(2).replace(".", ",")); }}
-                        >
-                          R$ {r.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </button>
-                      )}
+                    <td className="px-5 py-3.5 font-medium text-status-danger">
+                      R$ {r.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground capitalize">
                       {r.paymentMethod ? PAYMENT_METHOD_LABELS[r.paymentMethod] || r.paymentMethod : "—"}
