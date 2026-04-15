@@ -55,12 +55,13 @@ export default function Financial() {
     const clientName = (dec as any).clients?.name || "—";
     const fee = Number(dec.fee || 0);
     const decPayments = payments.filter((p) => p.declaration_id === dec.id);
+    const lastPayment = decPayments.length > 0 ? decPayments[0] : null;
     const paidAmount = decPayments
       .filter((p) => p.status === "pago")
       .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const paymentStatus: "pago" | "parcial" | "pendente" =
-      paidAmount >= fee && fee > 0 ? "pago" : paidAmount > 0 ? "parcial" : "pendente";
-    const lastPayment = decPayments.length > 0 ? decPayments[0] : null;
+    // Use actual DB status from the last payment record, fallback to computed
+    const dbStatus = lastPayment?.status as "pago" | "parcial" | "pendente" | undefined;
+    const paymentStatus: "pago" | "parcial" | "pendente" = dbStatus || "pendente";
     const pendingPayment = decPayments.find((p) => p.status === "pendente" || p.status === "parcial");
     const dueDate = pendingPayment?.due_date || null;
     return {
