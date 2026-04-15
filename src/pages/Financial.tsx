@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { useDeclarations, usePayments } from "@/hooks/useData";
-import { DollarSign, Clock, CheckCircle, Users } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { DollarSign, Clock, CheckCircle, Users, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import MetricCard from "@/components/MetricCard";
 import { PaymentBadge } from "@/components/StatusBadge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 const TYPE_LABELS: Record<string, string> = {
   simplificada: "Simplificada",
@@ -19,24 +29,20 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export default function Financial() {
   const { data: declarations = [], isLoading: loadingDec } = useDeclarations();
   const { data: payments = [], isLoading: loadingPay } = usePayments();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const isLoading = loadingDec || loadingPay;
 
-  // Total fees from declarations
   const totalFee = declarations.reduce((s, d) => s + Number(d.fee || 0), 0);
-
-  // Received from payments with status "pago"
   const received = payments
     .filter((p) => p.status === "pago")
     .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-  // Partial payments
   const partial = payments
     .filter((p) => p.status === "parcial")
     .reduce((s, p) => s + Number(p.amount || 0), 0);
-
   const pending = totalFee - received - partial;
 
-  // Build a combined view: one row per declaration with payment info
   const rows = declarations.map((dec) => {
     const clientName = (dec as any).clients?.name || "—";
     const fee = Number(dec.fee || 0);
@@ -47,6 +53,9 @@ export default function Financial() {
     const paymentStatus: "pago" | "parcial" | "pendente" =
       paidAmount >= fee && fee > 0 ? "pago" : paidAmount > 0 ? "parcial" : "pendente";
     const lastPayment = decPayments.length > 0 ? decPayments[0] : null;
+    // Get due_date from the most recent pending payment, or null
+    const pendingPayment = decPayments.find((p) => p.status === "pendente" || p.status === "parcial");
+    const dueDate = pendingPayment?.due_date || null;
     return {
       id: dec.id,
       clientName,
@@ -58,8 +67,44 @@ export default function Financial() {
       remaining: Math.max(fee - paidAmount, 0),
       paymentStatus,
       paymentMethod: lastPayment?.payment_method || null,
+      dueDate,
+      pendingPaymentId: pendingPayment?.id || null,
     };
   });
+
+  const handleSetDueDate = async (row: typeof rows[0], date: Date | undefined) => {
+    if (!user || !date) return;
+
+    const dueDateStr = format(date, "yyyy-MM-dd");
+
+    if (row.pendingPaymentId) {
+      // Update existing payment's due_date
+      const { error } = await supabase
+        .from("payments")
+        .update({ due_date: dueDateStr } as any)
+        .eq("id", row.pendingPaymentId);
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        return;
+      }
+    } else {
+      // Create a new pending payment record with due_date
+      const { error } = await supabase.from("payments").insert({
+        user_id: user.id,
+        declaration_id: row.id,
+        amount: row.remaining,
+        status: "pendente",
+        due_date: dueDateStr,
+      } as any);
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+
+    toast({ title: "Data de pagamento definida!" });
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
+  };
 
   return (
     <div className="space-y-6">
@@ -118,6 +163,7 @@ export default function Financial() {
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Restante</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Forma</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Previsão Pgto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -146,6 +192,37 @@ export default function Financial() {
                     </td>
                     <td className="px-5 py-3.5">
                       <PaymentBadge status={r.paymentStatus} />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {r.paymentStatus === "pago" ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors",
+                                r.dueDate ? "text-foreground" : "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="h-3 w-3" />
+                              {r.dueDate
+                                ? format(new Date(r.dueDate + "T00:00:00"), "dd/MM/yyyy")
+                                : "Definir data"}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={r.dueDate ? new Date(r.dueDate + "T00:00:00") : undefined}
+                              onSelect={(date) => handleSetDueDate(r, date)}
+                              locale={ptBR}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </td>
                   </tr>
                 ))}
