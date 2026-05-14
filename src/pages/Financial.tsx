@@ -43,14 +43,6 @@ export default function Financial() {
   
 
   const totalFee = declarations.reduce((s, d) => s + Number(d.fee || 0), 0);
-  const received = payments
-    .filter((p) => p.status === "pago")
-    .reduce((s, p) => s + Number(p.amount || 0), 0);
-  const partial = payments
-    .filter((p) => p.status === "parcial")
-    .reduce((s, p) => s + Number(p.amount || 0), 0);
-  const pending = totalFee - received - partial;
-
   const rows = declarations.map((dec) => {
     const clientName = (dec as any).clients?.name || "—";
     const fee = Number(dec.fee || 0);
@@ -80,6 +72,15 @@ export default function Financial() {
       lastPaymentId: lastPayment?.id || null,
     };
   });
+
+  // Aggregate totals per declaration (latest status wins) to avoid double counting
+  const received = rows
+    .filter((r) => r.paymentStatus === "pago")
+    .reduce((s, r) => s + r.fee, 0);
+  const partial = rows
+    .filter((r) => r.paymentStatus === "parcial")
+    .reduce((s, r) => s + r.paidAmount, 0);
+  const pending = Math.max(totalFee - received - partial, 0);
 
   const handleSetDueDate = async (row: typeof rows[0], date: Date | undefined) => {
     if (!user || !date) return;
