@@ -20,6 +20,12 @@ interface UserRole {
   role: string;
 }
 
+const ModalOverlay = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    {children}
+  </div>
+);
+
 export default function Users() {
   const { user } = useAuth();
   const isAdmin = useIsAdmin();
@@ -153,12 +159,6 @@ export default function Users() {
       setLoading(false);
     }
   };
-
-  const ModalOverlay = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-6">
