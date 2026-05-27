@@ -20,6 +20,11 @@ export function useUserRole() {
 }
 
 export function useIsAdmin() {
+  const { data: role } = useUserRole();
+  return role === "admin";
+}
+
+export function useAdminStatus() {
   const { data: role, isLoading } = useUserRole();
   return { isAdmin: role === "admin", isLoading };
 }
