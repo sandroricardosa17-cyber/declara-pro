@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin } from "@/hooks/useUserRole";
+import { useAdminStatus } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Mail, Lock, User, Shield, X, Pencil, Trash2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
@@ -28,7 +28,7 @@ const ModalOverlay = ({ children, onClose }: { children: React.ReactNode; onClos
 
 export default function Users() {
   const { user } = useAuth();
-  const isAdmin = useIsAdmin();
+  const { isAdmin, isLoading: roleLoading } = useAdminStatus();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -62,6 +62,10 @@ export default function Users() {
   useEffect(() => {
     if (isAdmin) fetchData();
   }, [isAdmin]);
+
+  if (roleLoading) {
+    return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">Carregando...</div>;
+  }
 
   if (!isAdmin) {
     return <Navigate to="/" replace />;
