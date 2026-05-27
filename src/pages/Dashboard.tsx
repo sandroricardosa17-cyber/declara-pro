@@ -46,6 +46,10 @@ export default function Dashboard() {
     ? payments
     : payments.filter((p) => p.user_id === selectedUserId);
 
+  const filteredClients = selectedUserId === "all"
+    ? clients
+    : clients.filter((c) => c.user_id === selectedUserId);
+
   const currentYear = filteredDeclarations.filter((d) => d.exercise_year === new Date().getFullYear());
   const pending = currentYear.filter((d) => d.status === "aguardando_documentos").length;
   const inProgress = currentYear.filter((d) => ["em_andamento", "em_revisao"].includes(d.status)).length;
@@ -231,7 +235,7 @@ export default function Dashboard() {
             <h3 className="text-sm font-semibold mb-3">Clientes Ativos</h3>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-2xl font-bold">{clients.length}</span>
+              <span className="text-2xl font-bold">{filteredClients.length}</span>
               <span className="text-xs text-muted-foreground">clientes</span>
             </div>
           </div>
