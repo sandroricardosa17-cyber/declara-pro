@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useClients, useDeclarations } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Phone, Mail, X, Eye, EyeOff, Lock, Pencil, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Phone, Mail, X, Eye, EyeOff, Lock, Pencil, Check, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 export default function Clients() {
   const { data: clients = [], isLoading } = useClients();
   const { data: declarations = [] } = useDeclarations();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -22,6 +24,7 @@ export default function Clients() {
   const [editForm, setEditForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = clients.filter(
@@ -82,6 +85,21 @@ export default function Clients() {
 
   const togglePassword = (id: string) => {
     setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    const { error } = await supabase.from("clients").delete().eq("id", deletingId);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Cliente excluído!", description: "Declarações, documentos, pagamentos e tarefas vinculados também foram removidos." });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    setDeletingId(null);
   };
 
   const scrollLeft = () => {
