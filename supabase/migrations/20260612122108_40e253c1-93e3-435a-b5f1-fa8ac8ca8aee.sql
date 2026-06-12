@@ -1,0 +1,2 @@
+CREATE POLICY "Admins can delete any client" ON public.clients FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete any declaration" ON public.declarations FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));
