@@ -315,10 +315,15 @@ export default function Clients() {
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </div>
                       <div className="w-[80px] px-3 text-xs"><span className="font-medium text-foreground">{decCount}</span></div>
-                      <div className="w-[60px] px-3">
+                      <div className="w-[90px] px-3 flex items-center gap-1">
                         <button onClick={() => startEdit(client)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Editar">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
+                        {isAdmin && (
+                          <button onClick={() => setDeletingId(client.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir cliente">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
