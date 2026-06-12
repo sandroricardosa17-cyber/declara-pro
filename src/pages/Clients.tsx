@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useClients, useDeclarations } from "@/hooks/useData";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Phone, Mail, X, Eye, EyeOff, Lock, Pencil, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Phone, Mail, X, Eye, EyeOff, Lock, Pencil, Check, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 export default function Clients() {
   const { data: clients = [], isLoading } = useClients();
   const { data: declarations = [] } = useDeclarations();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -22,6 +24,7 @@ export default function Clients() {
   const [editForm, setEditForm] = useState({ name: "", cpf: "", phone: "", email: "", address: "", profession: "", birth_date: "", notes: "", gov_password: "" });
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = clients.filter(
@@ -82,6 +85,21 @@ export default function Clients() {
 
   const togglePassword = (id: string) => {
     setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    const { error } = await supabase.from("clients").delete().eq("id", deletingId);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Cliente excluído!", description: "Declarações, documentos, pagamentos e tarefas vinculados também foram removidos." });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    queryClient.invalidateQueries({ queryKey: ["declarations"] });
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    setDeletingId(null);
   };
 
   const scrollLeft = () => {
@@ -297,10 +315,15 @@ export default function Clients() {
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </div>
                       <div className="w-[80px] px-3 text-xs"><span className="font-medium text-foreground">{decCount}</span></div>
-                      <div className="w-[60px] px-3">
+                      <div className="w-[90px] px-3 flex items-center gap-1">
                         <button onClick={() => startEdit(client)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Editar">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
+                        {isAdmin && (
+                          <button onClick={() => setDeletingId(client.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir cliente">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -325,9 +348,16 @@ export default function Clients() {
                       <p className="text-xs text-muted-foreground">{client.cpf}</p>
                     </div>
                   </div>
-                  <button onClick={() => startEdit(client)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all" title="Editar">
-                    <Pencil className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={() => startEdit(client)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Editar">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    {isAdmin && (
+                      <button onClick={() => setDeletingId(client.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir cliente">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-4 space-y-2">
                   {client.phone && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5" />{client.phone}</div>}
@@ -350,6 +380,21 @@ export default function Clients() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setDeletingId(null)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">Excluir cliente?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esta ação é permanente e irá remover também todas as declarações, documentos, pagamentos e tarefas vinculados a este cliente.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setDeletingId(null)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+              <button onClick={handleDelete} className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors">Excluir</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
