@@ -382,6 +382,21 @@ export default function Clients() {
           })}
         </div>
       )}
+
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setDeletingId(null)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">Excluir cliente?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esta ação é permanente e irá remover também todas as declarações, documentos, pagamentos e tarefas vinculados a este cliente.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setDeletingId(null)} className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted transition-colors">Cancelar</button>
+              <button onClick={handleDelete} className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors">Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
