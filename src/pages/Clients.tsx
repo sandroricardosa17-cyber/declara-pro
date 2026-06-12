@@ -348,9 +348,16 @@ export default function Clients() {
                       <p className="text-xs text-muted-foreground">{client.cpf}</p>
                     </div>
                   </div>
-                  <button onClick={() => startEdit(client)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all" title="Editar">
-                    <Pencil className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={() => startEdit(client)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Editar">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    {isAdmin && (
+                      <button onClick={() => setDeletingId(client.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir cliente">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-4 space-y-2">
                   {client.phone && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5" />{client.phone}</div>}
