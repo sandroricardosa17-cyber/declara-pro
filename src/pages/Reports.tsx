@@ -141,14 +141,15 @@ export default function Reports() {
         <div class="section">
           <h2>Comissões por Colaborador (10%)</h2>
           <table>
-            <thead><tr><th>Colaborador</th><th>Declarações</th><th>Honorários</th><th>Comissão (10%)</th></tr></thead>
+            <thead><tr><th>Colaborador</th><th>Declarações</th><th>Honorários</th><th>Recebido</th><th>Comissão (10%)</th></tr></thead>
             <tbody>
               ${byCollaborator.map(([name, data]) => `
                 <tr>
                   <td>${name}</td>
                   <td>${data.count}</td>
                   <td>R$ ${data.fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                  <td class="text-primary">R$ ${(data.fee * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                  <td class="text-success">R$ ${data.received.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                  <td class="text-primary">R$ ${(data.received * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -305,6 +306,7 @@ export default function Reports() {
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Colaborador</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Declarações</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Honorários</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Recebido</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Comissão (10%)</th>
                 </tr>
               </thead>
@@ -314,7 +316,8 @@ export default function Reports() {
                     <td className="px-5 py-3.5 font-medium">{name}</td>
                     <td className="px-5 py-3.5">{data.count}</td>
                     <td className="px-5 py-3.5">R$ {data.fee.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                    <td className="px-5 py-3.5 font-medium text-primary">R$ {(data.fee * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                    <td className="px-5 py-3.5 text-status-success">R$ {data.received.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                    <td className="px-5 py-3.5 font-medium text-primary">R$ {(data.received * 0.1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
