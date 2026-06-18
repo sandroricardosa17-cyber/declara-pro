@@ -26,9 +26,9 @@ export default function Reports() {
   const finalizadas = declarations.filter((d) => ["finalizada", "enviada", "em_processamento", "processada"].includes(d.status)).length;
 
   const totalFee = declarations.reduce((s, d) => s + Number((d as any).fee || 0), 0);
-  const totalCommission = totalFee * 0.1;
 
   const totalPaid = payments.filter((p) => p.status === "pago").reduce((s, p) => s + Number(p.amount || 0), 0);
+  const totalCommission = totalPaid * 0.1;
   const totalPending = Math.max(totalFee - totalPaid, 0);
   const pendingCount = declarations.filter((d) => {
     const fee = Number((d as any).fee || 0);
@@ -53,11 +53,14 @@ export default function Reports() {
   const byCollaborator = Object.entries(
     declarations.reduce((acc, d) => {
       const name = (d as any).collaborator_name || "Não atribuído";
-      if (!acc[name]) acc[name] = { count: 0, fee: 0 };
+      if (!acc[name]) acc[name] = { count: 0, fee: 0, received: 0 };
       acc[name].count++;
       acc[name].fee += Number((d as any).fee || 0);
+      acc[name].received += payments
+        .filter((p) => p.declaration_id === d.id && p.status === "pago")
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
       return acc;
-    }, {} as Record<string, { count: number; fee: number }>)
+    }, {} as Record<string, { count: number; fee: number; received: number }>)
   );
 
   const handleDownloadPDF = () => {
